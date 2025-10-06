@@ -16,24 +16,26 @@ public:
     bool CleanUp() override;
 
 private:
-    // Texturas
-    Texture2D texMap{};             // tablero
-    Texture2D texBall{};            // bola (referencia)
-    Texture2D texFlipLeft{};        // palanca_inverted.png  (IZQUIERDA)
-    Texture2D texFlipRight{};       // palanca.png           (DERECHA)
+    // === Texturas ===
+    Texture2D texMap{};        // Fondo del tablero
+    Texture2D texBall{};       // Bola (referencia visual)
+    Texture2D texFlipLeft{};   // Palanca izquierda  (palanca_inverted.png)
+    Texture2D texFlipRight{};  // Palanca derecha   (palanca.png)
 
-    // Centros (como en el proyecto de tus compis)
-    Vector2 flipLeftCenter{ 0,0 };    // (210 - w/2, 604 + h/2)
-    Vector2 flipRightCenter{ 0,0 };   // (298 - w/2, 604 + h/2)
+    // === Centros de cada palanca (ajustados ligeramente hacia abajo) ===
+    Vector2 leftCenter{ 0.0f, 0.0f };
+    Vector2 rightCenter{ 0.0f, 0.0f };
 
-    // Ángulos (arranca 0 para evitar “X”; después ajustamos si quieres)
-    float flipLeftAngle = 0.0f;
-    float flipRightAngle = 0.0f;
+    // === Rotaciones (grados) — reposo mirando hacia abajo/centro ===
+    float leftAngleDeg = 24.0f;  // Izquierda
+    float rightAngleDeg = -24.0f;  // Derecha
 
-    // Bola solo de referencia visual
+    // Bola (solo referencia)
     Vector2 posBall{ 300.0f, 200.0f };
 
+    // === Helpers ===
     void AdjustWindowToMap();
     void DrawCentered(Texture2D& tex, Vector2 center, float rotationDeg);
-    inline bool IsLoaded(const Texture2D& t) const { return t.id != 0; }
+
+    inline bool IsLoaded(const Texture2D& tex) const { return tex.id != 0; }
 };

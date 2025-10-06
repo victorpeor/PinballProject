@@ -2,50 +2,53 @@
 #include "ModuleGame.h"
 #include "Globals.h"
 
-ModuleGame::ModuleGame(Application* app, bool start_enabled) : Module(app, start_enabled) {}
+ModuleGame::ModuleGame(Application* app, bool start_enabled)
+    : Module(app, start_enabled)
+{
+}
+
 ModuleGame::~ModuleGame() {}
 
 bool ModuleGame::Start()
 {
-    // Carga (OJO: lado correcto, igual que tus compis)
     texMap = LoadTexture("Assets/map.png");
     texBall = LoadTexture("Assets/bola.png");
-    texFlipLeft = LoadTexture("Assets/palanca_inverted.png"); // IZQ
-    texFlipRight = LoadTexture("Assets/palanca.png");          // DER
+    texFlipLeft = LoadTexture("Assets/palanca_inverted.png"); // IZQUIERDA
+    texFlipRight = LoadTexture("Assets/palanca.png");          // DERECHA
 
     if (!IsLoaded(texMap) || !IsLoaded(texBall) || !IsLoaded(texFlipLeft) || !IsLoaded(texFlipRight))
     {
-        LOG("Error cargando texturas de Assets/");
+        LOG("Error cargando texturas desde Assets/");
         return false;
     }
 
-    // Ventana exactamente al mapa (sin bordes)
     AdjustWindowToMap();
 
-    // === Centros EXACTOS como en su proyecto (top-left -> center) ===
-    // Box(App->physics, 210 - w/2, 604 + h/2, w,h, ...) ==> center = (x, y)
-    flipLeftCenter = { 210.0f - texFlipLeft.width * 0.5f, 604.0f + texFlipLeft.height * 0.5f };
-    flipRightCenter = { 298.0f - texFlipRight.width * 0.5f, 604.0f + texFlipRight.height * 0.5f };
+    // Posición base de los compañeros: (210 - w/2, 604 + h/2) y (298 - w/2, 604 + h/2)
+    // Ajuste: +8 px hacia abajo (Y) y -6 px hacia atrás (X)
+    const float offsetY = 8.0f;
+    const float offsetX = -6.0f;
 
-    // Arrancamos sin giro; si luego quieres “reposo” suave, pon ±8.0f
-    flipLeftAngle = 0.0f;
-    flipRightAngle = 0.0f;
+    leftCenter = { 210.0f - texFlipLeft.width * 0.5f + offsetX,
+                    604.0f + texFlipLeft.height * 0.5f + offsetY };
+
+    rightCenter = { 298.0f - texFlipRight.width * 0.5f - offsetX,
+                    604.0f + texFlipRight.height * 0.5f + offsetY };
+
+    leftAngleDeg = 24.0f;
+    rightAngleDeg = -24.0f;
 
     return true;
 }
 
 update_status ModuleGame::Update()
 {
-    ClearBackground(Color{ 20,20,20,255 });
-
-    // Mapa
+    ClearBackground(Color{ 20, 20, 20, 255 });
     DrawTexture(texMap, 0, 0, WHITE);
 
-    // Palancas como en el render de sus Box::Update() (centradas + rotación)
-    DrawCentered(texFlipLeft, flipLeftCenter, flipLeftAngle);
-    DrawCentered(texFlipRight, flipRightCenter, flipRightAngle);
+    DrawCentered(texFlipLeft, leftCenter, leftAngleDeg);
+    DrawCentered(texFlipRight, rightCenter, rightAngleDeg);
 
-    // Bola (referencia)
     DrawTexture(texBall, (int)posBall.x, (int)posBall.y, WHITE);
 
     return update_status::UPDATE_CONTINUE;
@@ -57,6 +60,11 @@ bool ModuleGame::CleanUp()
     if (IsLoaded(texBall))      UnloadTexture(texBall);
     if (IsLoaded(texFlipLeft))  UnloadTexture(texFlipLeft);
     if (IsLoaded(texFlipRight)) UnloadTexture(texFlipRight);
+
+    texMap = Texture2D{};
+    texBall = Texture2D{};
+    texFlipLeft = Texture2D{};
+    texFlipRight = Texture2D{};
     return true;
 }
 
@@ -66,10 +74,9 @@ void ModuleGame::AdjustWindowToMap()
     SetWindowSize(texMap.width, texMap.height);
 }
 
-// Dibujo “estilo Box::Update()” de tus compis: origen en centro del sprite
 void ModuleGame::DrawCentered(Texture2D& tex, Vector2 center, float rotationDeg)
 {
-    Rectangle src{ 0,0,(float)tex.width,(float)tex.height };
+    Rectangle src{ 0.0f, 0.0f, (float)tex.width, (float)tex.height };
     Rectangle dst{ center.x, center.y, (float)tex.width, (float)tex.height };
     Vector2   origin{ (float)tex.width * 0.5f, (float)tex.height * 0.5f };
     DrawTexturePro(tex, src, dst, origin, rotationDeg, WHITE);
