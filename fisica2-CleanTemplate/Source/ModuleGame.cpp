@@ -1,102 +1,76 @@
-#include "Application.h"
+Ôªø#include "Application.h"
 #include "ModuleGame.h"
 #include "Globals.h"
 
-// raylib ya est· incluido en el .h
-
-ModuleGame::ModuleGame(Application* app, bool start_enabled) : Module(app, start_enabled)
-{
-}
-
-ModuleGame::~ModuleGame()
-{
-}
+ModuleGame::ModuleGame(Application* app, bool start_enabled) : Module(app, start_enabled) {}
+ModuleGame::~ModuleGame() {}
 
 bool ModuleGame::Start()
 {
-	// --- Cargar texturas desde la carpeta Assets (ruta relativa al ejecutable/working directory) ---
-	// Cambia las extensiones si tus archivos no son .png
-	texMap = LoadTexture("Assets/map.png");
-	texBall = LoadTexture("Assets/bola.png");
-	texFlipperL = LoadTexture("Assets/palanca.png");
-	texFlipperR = LoadTexture("Assets/palanca_inverted.png");
+    // Carga (OJO: lado correcto, igual que tus compis)
+    texMap = LoadTexture("Assets/map.png");
+    texBall = LoadTexture("Assets/bola.png");
+    texFlipLeft = LoadTexture("Assets/palanca_inverted.png"); // IZQ
+    texFlipRight = LoadTexture("Assets/palanca.png");          // DER
 
-	// ComprobaciÛn b·sica de carga
-	if (!IsLoaded(texMap)) { LOG("ERROR: No se pudo cargar Assets/map.png"); return false; }
-	if (!IsLoaded(texBall)) { LOG("ERROR: No se pudo cargar Assets/bola.png"); return false; }
-	if (!IsLoaded(texFlipperL)) { LOG("ERROR: No se pudo cargar Assets/palanca.png"); return false; }
-	if (!IsLoaded(texFlipperR)) { LOG("ERROR: No se pudo cargar Assets/palanca_inverted.png"); return false; }
+    if (!IsLoaded(texMap) || !IsLoaded(texBall) || !IsLoaded(texFlipLeft) || !IsLoaded(texFlipRight))
+    {
+        LOG("Error cargando texturas de Assets/");
+        return false;
+    }
 
-	// Si necesitas ajustar escalas iniciales:
-	// mapScale = 1.0f; ballScale = 1.0f; flipperScale = 1.0f;
+    // Ventana exactamente al mapa (sin bordes)
+    AdjustWindowToMap();
 
-	LOG("ModuleGame::Start() - Texturas cargadas y listas para dibujar.");
-	return true;
+    // === Centros EXACTOS como en su proyecto (top-left -> center) ===
+    // Box(App->physics, 210 - w/2, 604 + h/2, w,h, ...) ==> center = (x, y)
+    flipLeftCenter = { 210.0f - texFlipLeft.width * 0.5f, 604.0f + texFlipLeft.height * 0.5f };
+    flipRightCenter = { 298.0f - texFlipRight.width * 0.5f, 604.0f + texFlipRight.height * 0.5f };
+
+    // Arrancamos sin giro; si luego quieres ‚Äúreposo‚Äù suave, pon ¬±8.0f
+    flipLeftAngle = 0.0f;
+    flipRightAngle = 0.0f;
+
+    return true;
 }
 
 update_status ModuleGame::Update()
 {
-	// NOTA: Asumo que otro mÛdulo (render/window) ya hace BeginDrawing()/EndDrawing().
-	// Si no, y este mÛdulo debe hacerlo, descomenta:
-	// BeginDrawing();
-	// ClearBackground(BLACK);
+    ClearBackground(Color{ 20,20,20,255 });
 
-	// 1) Dibujar MAP primero (fondo)
-	DrawTextureAt(texMap, posMap, mapScale, 0.0f, /*centered=*/false);
+    // Mapa
+    DrawTexture(texMap, 0, 0, WHITE);
 
-	// 2) Bola
-	DrawTextureAt(texBall, posBall, ballScale, 0.0f, /*centered=*/false);
+    // Palancas como en el render de sus Box::Update() (centradas + rotaci√≥n)
+    DrawCentered(texFlipLeft, flipLeftCenter, flipLeftAngle);
+    DrawCentered(texFlipRight, flipRightCenter, flipRightAngle);
 
-	// 3) Palancas (puedes cambiar centered=true y rotarlas luego)
-	DrawTextureAt(texFlipperL, posFlipperL, flipperScale, flipperLRotation, /*centered=*/false);
-	DrawTextureAt(texFlipperR, posFlipperR, flipperScale, flipperRRotation, /*centered=*/false);
+    // Bola (referencia)
+    DrawTexture(texBall, (int)posBall.x, (int)posBall.y, WHITE);
 
-	// Si este mÛdulo gestiona el frame:
-	// EndDrawing();
-
-	return update_status::UPDATE_CONTINUE;
+    return update_status::UPDATE_CONTINUE;
 }
 
 bool ModuleGame::CleanUp()
 {
-	// Liberar texturas si est·n cargadas
-	if (IsLoaded(texMap)) { UnloadTexture(texMap);      texMap = { 0 }; }
-	if (IsLoaded(texBall)) { UnloadTexture(texBall);     texBall = { 0 }; }
-	if (IsLoaded(texFlipperL)) { UnloadTexture(texFlipperL); texFlipperL = { 0 }; }
-	if (IsLoaded(texFlipperR)) { UnloadTexture(texFlipperR); texFlipperR = { 0 }; }
-
-	LOG("ModuleGame::CleanUp() - Texturas liberadas.");
-	return true;
+    if (IsLoaded(texMap))       UnloadTexture(texMap);
+    if (IsLoaded(texBall))      UnloadTexture(texBall);
+    if (IsLoaded(texFlipLeft))  UnloadTexture(texFlipLeft);
+    if (IsLoaded(texFlipRight)) UnloadTexture(texFlipRight);
+    return true;
 }
 
-void ModuleGame::DrawTextureAt(const Texture2D& tex, Vector2 pos, float scale, float rotationDegrees, bool centered) const
+void ModuleGame::AdjustWindowToMap()
 {
-	if (!IsLoaded(tex)) return;
+    SetWindowMinSize(texMap.width, texMap.height);
+    SetWindowSize(texMap.width, texMap.height);
+}
 
-	// Dimensiones escaladas
-	const float w = tex.width * scale;
-	const float h = tex.height * scale;
-
-	if (!centered && rotationDegrees == 0.0f && scale == 1.0f)
-	{
-		// Camino r·pido: dibuja sin transformaciones
-		DrawTexture(tex, (int)pos.x, (int)pos.y, WHITE);
-		return;
-	}
-
-	// Usamos DrawTexturePro para soportar escala, rotaciÛn y anclaje
-	Rectangle src{ 0, 0, (float)tex.width, (float)tex.height };
-	Rectangle dst{ pos.x, pos.y, w, h };
-	Vector2 origin{ 0.0f, 0.0f };
-
-	if (centered)
-	{
-		// Origen al centro del sprite
-		origin = { w * 0.5f, h * 0.5f };
-		// Cuando el origen est· centrado, el dst.x/dst.y deben ser el centro visual
-		// (tal como ya pasamos pos como centro)
-	}
-	// Si NO est· centrado, pos es la esquina superior izquierda.
-
-	DrawTexturePro(tex, src, dst, origin, rotationDegrees, WHITE);
+// Dibujo ‚Äúestilo Box::Update()‚Äù de tus compis: origen en centro del sprite
+void ModuleGame::DrawCentered(Texture2D& tex, Vector2 center, float rotationDeg)
+{
+    Rectangle src{ 0,0,(float)tex.width,(float)tex.height };
+    Rectangle dst{ center.x, center.y, (float)tex.width, (float)tex.height };
+    Vector2   origin{ (float)tex.width * 0.5f, (float)tex.height * 0.5f };
+    DrawTexturePro(tex, src, dst, origin, rotationDeg, WHITE);
 }
