@@ -1,5 +1,4 @@
 #pragma once
-
 #include "Globals.h"
 #include "Module.h"
 #include "p2Point.h"
@@ -16,26 +15,35 @@ public:
     bool CleanUp() override;
 
 private:
-    // === Texturas ===
-    Texture2D texMap{};        // Fondo del tablero
-    Texture2D texBall{};       // Bola (referencia visual)
-    Texture2D texFlipLeft{};   // Palanca izquierda  (palanca_inverted.png)
-    Texture2D texFlipRight{};  // Palanca derecha   (palanca.png)
+    Texture2D texMap{};
+    Texture2D texBall{};
+    Texture2D texFlipLeft{};   // palanca_inverted.png (izquierda)
+    Texture2D texFlipRight{};  // palanca.png (derecha)
 
-    // === Centros de cada palanca (ajustados ligeramente hacia abajo) ===
-    Vector2 leftCenter{ 0.0f, 0.0f };
-    Vector2 rightCenter{ 0.0f, 0.0f };
+    // Centros “buenos” (como en tu snippet)
+    Vector2 leftCenter{ 0,0 };
+    Vector2 rightCenter{ 0,0 };
 
-    // === Rotaciones (grados) — reposo mirando hacia abajo/centro ===
-    float leftAngleDeg = 24.0f;  // Izquierda
-    float rightAngleDeg = -24.0f;  // Derecha
+    // Pivote mundo (punta interna fija)
+    Vector2 leftPivotWorld{ 0,0 };
+    Vector2 rightPivotWorld{ 0,0 };
 
-    // Bola (solo referencia)
+    // Pivote local (px dentro del sprite) = punta interna
+    Vector2 leftLocalPivotPx{ 0,0 };
+    Vector2 rightLocalPivotPx{ 0,0 };
+
+    // Ángulos y movimiento
+    float leftAngleDeg = 24.0f;
+    float rightAngleDeg = -24.0f;
+    const float leftRestDeg = 24.0f;
+    const float leftHitDeg = -50.0f;
+    const float rightRestDeg = -24.0f;
+    const float rightHitDeg = 50.0f;
+    const float flipSpeedDps = 600.0f;
+
     Vector2 posBall{ 300.0f, 200.0f };
 
-    // === Helpers ===
     void AdjustWindowToMap();
-    void DrawCentered(Texture2D& tex, Vector2 center, float rotationDeg);
-
-    inline bool IsLoaded(const Texture2D& tex) const { return tex.id != 0; }
+    void DrawWithPivot(const Texture2D& tex, Vector2 worldPivot, Vector2 localPivotPx, float rotationDeg) const;
+    inline bool IsLoaded(const Texture2D& t) const { return t.id != 0; }
 };
