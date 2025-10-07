@@ -38,6 +38,10 @@ bool ModuleGame::Start()
 
     leftAngleDeg = leftRestDeg;
     rightAngleDeg = rightRestDeg;
+
+    // Inicializar el vector de pelotas
+    balls.clear();
+
     return true;
 }
 
@@ -58,13 +62,24 @@ update_status ModuleGame::Update()
     leftAngleDeg = approach(leftAngleDeg, leftTarget, step);
     rightAngleDeg = approach(rightAngleDeg, rightTarget, step);
 
+    // Detectar tecla 1 para spawnear pelota
+    if (IsKeyPressed(KEY_ONE)) {
+        SpawnBall();
+    }
+
+    // Actualizar física de las pelotas
+    UpdateBalls(dt);
+
+    // Dibujar
     ClearBackground(Color{ 20,20,20,255 });
     DrawTexture(texMap, 0, 0, WHITE);
 
     DrawWithPivot(texFlipLeft, leftPivotWorld, leftLocalPivotPx, leftAngleDeg);
     DrawWithPivot(texFlipRight, rightPivotWorld, rightLocalPivotPx, rightAngleDeg);
 
-    DrawTexture(texBall, (int)posBall.x, (int)posBall.y, WHITE);
+    // Dibujar todas las pelotas
+    DrawBalls();
+
     return update_status::UPDATE_CONTINUE;
 }
 
@@ -76,6 +91,7 @@ bool ModuleGame::CleanUp()
     if (IsLoaded(texFlipRight)) UnloadTexture(texFlipRight);
 
     texMap = texBall = texFlipLeft = texFlipRight = Texture2D{};
+    balls.clear();
     return true;
 }
 
@@ -96,4 +112,84 @@ void ModuleGame::DrawWithPivot(const Texture2D& tex, Vector2 worldPivot, Vector2
     };
     Vector2 origin{ localPivotPx.x, localPivotPx.y };
     DrawTexturePro(tex, src, dst, origin, rotationDeg, WHITE);
+}
+
+void ModuleGame::SpawnBall()
+{
+    Ball newBall;
+    newBall.position = spawnPosition;
+
+    // Velocidad inicial aleatoria hacia abajo con un poco de variación horizontal
+    newBall.velocity = { (float)(GetRandomValue(-50, 50)), ballSpeed };
+    newBall.active = true;
+
+    balls.push_back(newBall);
+
+    // Opcional: Limitar el número máximo de pelotas para evitar lag
+    if (balls.size() > 20) {
+        balls.erase(balls.begin()); // Eliminar la pelota más antigua
+    }
+}
+
+void ModuleGame::UpdateBalls(float dt)
+{
+    for (auto& ball : balls) {
+        if (!ball.active) continue;
+
+        // Actualizar posición
+        ball.position.x += ball.velocity.x * dt;
+        ball.position.y += ball.velocity.y * dt;
+
+        // Simular gravedad
+        ball.velocity.y += 500.0f * dt;
+
+        // Colisiones simples con los bordes de la pantalla
+        if (ball.position.x <= 0) {
+            ball.position.x = 0;
+            ball.velocity.x = -ball.velocity.x * 0.8f; // Rebote con pérdida de energía
+        }
+        else if (ball.position.x >= texMap.width - texBall.width) {
+            ball.position.x = texMap.width - texBall.width;
+            ball.velocity.x = -ball.velocity.x * 0.8f;
+        }
+
+        if (ball.position.y <= 0) {
+            ball.position.y = 0;
+            ball.velocity.y = -ball.velocity.y * 0.8f;
+        }
+        else if (ball.position.y >= texMap.height - texBall.height) {
+            ball.position.y = texMap.height - texBall.height;
+            ball.velocity.y = -ball.velocity.y * 0.8f;
+
+            // Si la pelota está muy quieta en el fondo, desactivarla
+            if (fabs(ball.velocity.y) < 50.0f && fabs(ball.velocity.x) < 10.0f) {
+                ball.active = false;
+            }
+        }
+
+        // Limitar velocidad máxima
+        float speed = sqrtf(ball.velocity.x * ball.velocity.x + ball.velocity.y * ball.velocity.y);
+        float maxSpeed = 800.0f;
+        if (speed > maxSpeed) {
+            ball.velocity.x = (ball.velocity.x / speed) * maxSpeed;
+            ball.velocity.y = (ball.velocity.y / speed) * maxSpeed;
+        }
+    }
+
+    // Eliminar pelotas inactivas (opcional, para limpiar memoria)
+    balls.erase(std::remove_if(balls.begin(), balls.end(),
+        [](const Ball& ball) { return !ball.active; }),
+        balls.end());
+}
+
+void ModuleGame::DrawBalls()
+{
+    for (const auto& ball : balls) {
+        if (ball.active) {
+            DrawTexture(texBall, (int)ball.position.x, (int)ball.position.y, WHITE);
+        }
+    }
+
+    // También dibujar la pelota original si aún la quieres mantener
+    DrawTexture(texBall, (int)posBall.x, (int)posBall.y, WHITE);
 }

@@ -3,6 +3,7 @@
 #include "Module.h"
 #include "p2Point.h"
 #include "raylib.h"
+#include <vector>
 
 class ModuleGame : public Module
 {
@@ -17,22 +18,16 @@ public:
 private:
     Texture2D texMap{};
     Texture2D texBall{};
-    Texture2D texFlipLeft{};   // palanca_inverted.png (izquierda)
-    Texture2D texFlipRight{};  // palanca.png (derecha)
+    Texture2D texFlipLeft{};
+    Texture2D texFlipRight{};
 
-    // Centros “buenos” (como en tu snippet)
     Vector2 leftCenter{ 0,0 };
     Vector2 rightCenter{ 0,0 };
-
-    // Pivote mundo (punta interna fija)
     Vector2 leftPivotWorld{ 0,0 };
     Vector2 rightPivotWorld{ 0,0 };
-
-    // Pivote local (px dentro del sprite) = punta interna
     Vector2 leftLocalPivotPx{ 0,0 };
     Vector2 rightLocalPivotPx{ 0,0 };
 
-    // Ángulos y movimiento
     float leftAngleDeg = 24.0f;
     float rightAngleDeg = -24.0f;
     const float leftRestDeg = 24.0f;
@@ -43,7 +38,25 @@ private:
 
     Vector2 posBall{ 300.0f, 200.0f };
 
+    struct Ball {
+        Vector2 position;
+        Vector2 velocity;
+        bool active;
+        float radius;
+    };
+    std::vector<Ball> balls;
+
+    const float ballSpeed = 300.0f;
+    const Vector2 spawnPosition = { 300.0f, 100.0f };
+    const float ballRadius = 8.0f; // Radio aproximado de la pelota
+
     void AdjustWindowToMap();
     void DrawWithPivot(const Texture2D& tex, Vector2 worldPivot, Vector2 localPivotPx, float rotationDeg) const;
+    void SpawnBall();
+    void UpdateBalls(float dt);
+    void DrawBalls();
+    void CheckCollisionsWithFlippers(Ball& ball);
+    bool CheckCollisionWithFlipper(const Ball& ball, Vector2 pivotWorld, Vector2 localPivot, float angleDeg, bool isRightFlipper);
+    Vector2 RotatePoint(Vector2 point, Vector2 pivot, float angleDeg);
     inline bool IsLoaded(const Texture2D& t) const { return t.id != 0; }
 };
