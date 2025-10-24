@@ -7,7 +7,7 @@ ModuleGame::~ModuleGame() {}
 
 bool ModuleGame::Start()
 {
-    texMap = LoadTexture("Assets/map.png");
+    texMap = LoadTexture("Assets/mapa.png");
     texBall = LoadTexture("Assets/bola.png");
     texFlipLeft = LoadTexture("Assets/palanca_inverted.png");
     texFlipRight = LoadTexture("Assets/palanca.png");
