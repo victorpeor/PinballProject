@@ -52,6 +52,8 @@ public:
 	PhysBody* CreateChain(int x, int y, const int* points, int size);
 	PhysBody* CreateFlipper(int x, int y, int width, int height, bool left);
 	PhysBody* CreateSpring(int x, int y, int width, int height);
+	void CreatePolygonWall(const int* points, int size, float thickness, bool closedLoop);
+	void DrawDebug(ModuleRender* render);
 	void ApplyTorque(PhysBody* body, float torque);
 	// b2ContactListener ---
 	void BeginContact(b2Contact* contact);
@@ -60,7 +62,7 @@ public:
 	
 private:
 
-	bool debug;
+	
 	b2World* world;
 	b2MouseJoint* mouse_joint;
 	b2Body* ground;

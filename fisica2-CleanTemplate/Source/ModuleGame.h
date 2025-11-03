@@ -25,6 +25,7 @@ private:
     PhysBody* leftFlipper = nullptr;
     PhysBody* rightFlipper = nullptr;
     PhysBody* spring = nullptr;
+    PhysBody* resetZone = nullptr;
     // Texturas opcionales para renderizar
     Texture2D texBall{};
     Texture2D texSpring{};
@@ -34,7 +35,8 @@ private:
 
     // Efectos de sonido, puntuación, etc.
     uint bonus_fx = 0;
-
+    bool debug = false;
+    bool resetBall = false;
     // Función auxiliar para renderizar objetos
     //void DrawBall();
 };

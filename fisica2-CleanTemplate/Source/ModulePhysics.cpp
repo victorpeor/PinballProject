@@ -11,7 +11,7 @@ ModulePhysics::ModulePhysics(Application* app, bool start_enabled) : Module(app,
 {
 	world = NULL;
 	mouse_joint = NULL;
-	debug = true;
+	
 }
 
 // Destructor
@@ -36,7 +36,7 @@ bool ModulePhysics::Start()
 
 update_status ModulePhysics::PreUpdate()
 {
-	world->Step(1.0f / 60.0f, 6, 2);
+	world->Step(1.0f / 60.0f, 8, 3);
 
 	for (b2Contact* c = world->GetContactList(); c; c = c->GetNext())
 	{
@@ -61,6 +61,7 @@ PhysBody* ModulePhysics::CreateCircle(int x, int y, int radius)
 
 	b2BodyDef body;
 	body.type = b2_dynamicBody;
+	
 	body.position.Set(PIXEL_TO_METERS(x), PIXEL_TO_METERS(y));
 	body.userData.pointer = reinterpret_cast<uintptr_t>(pbody);
 
@@ -70,7 +71,7 @@ PhysBody* ModulePhysics::CreateCircle(int x, int y, int radius)
 	shape.m_radius = PIXEL_TO_METERS(radius);
 	b2FixtureDef fixture;
 	fixture.shape = &shape;
-	fixture.density = 1.0f;
+	fixture.density = 20.0f;
 
 	b->CreateFixture(&fixture);
 
@@ -140,6 +141,7 @@ PhysBody* ModulePhysics::CreateChain(int x, int y, const int* points, int size)
 
 	b2BodyDef body;
 	body.type = b2_dynamicBody;
+	body.allowSleep = false;
 	body.position.Set(PIXEL_TO_METERS(x), PIXEL_TO_METERS(y));
 	body.userData.pointer = reinterpret_cast<uintptr_t>(pbody);
 
@@ -172,16 +174,7 @@ PhysBody* ModulePhysics::CreateChain(int x, int y, const int* points, int size)
 // 
 update_status ModulePhysics::PostUpdate()
 {
-	if (IsKeyPressed(KEY_F1))
-	{
-		debug = !debug;
-	}
-
-	if (!debug)
-	{
-		return UPDATE_CONTINUE;
-	}
-
+	
 	b2Body* mouseSelect = nullptr;
 	Vector2 mousePosition = GetMousePosition();
 	b2Vec2 pMousePosition = b2Vec2(PIXEL_TO_METERS(mousePosition.x), PIXEL_TO_METERS(mousePosition.y));
@@ -260,7 +253,7 @@ update_status ModulePhysics::PostUpdate()
 			// TODO 1: If mouse button 1 is pressed ...
 			// test if the current body contains mouse position
 			if (mouse_joint == nullptr && mouseSelect == nullptr && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-
+				printf("Mouse click: world coords = (%f, %f)\n", mousePosition.x, mousePosition.y);
 				if (f->TestPoint(pMousePosition)) {
 					mouseSelect = b;
 				}
@@ -283,6 +276,8 @@ update_status ModulePhysics::PostUpdate()
 		def.maxForce = 100.f * mouseSelect->GetMass();
 
 		mouse_joint = (b2MouseJoint*)world->CreateJoint(&def);
+
+		
 	}
 
 	// TODO 3: If the player keeps pressing the mouse button, update
@@ -518,4 +513,100 @@ PhysBody* ModulePhysics::CreateSpring(int x, int y, int width, int height)
 	spring->body = body;
 
 	return spring;
+}
+void ModulePhysics::CreatePolygonWall(const int* points, int size, float thickness, bool closedLoop = false)
+{
+	int numSegments = (size / 2) - 1;
+	if (closedLoop) numSegments += 1; // añade un segmento del último al primero
+
+	for (int i = 0; i < numSegments; ++i)
+	{
+		int x1 = points[(i % (size / 2)) * 2];
+		int y1 = points[(i % (size / 2)) * 2 + 1];
+		int x2 = points[((i + 1) % (size / 2)) * 2];
+		int y2 = points[((i + 1) % (size / 2)) * 2 + 1];
+
+		// Centro entre los dos puntos
+		float cx = (x1 + x2) / 2.0f;
+		float cy = (y1 + y2) / 2.0f;
+
+		// Longitud y ángulo
+		float dx = (float)(x2 - x1);
+		float dy = (float)(y2 - y1);
+		float length = sqrtf(dx * dx + dy * dy);
+		float angle = atan2f(dy, dx);
+
+		// Crea cuerpo rectangular estático
+		PhysBody* wall = CreateRectangle(cx, cy, (int)length, (int)thickness);
+		wall->body->SetType(b2_staticBody);
+		wall->body->SetTransform(wall->body->GetPosition(), angle);
+	}
+}
+void ModulePhysics::DrawDebug(ModuleRender* render)
+{
+	Color cNormal = { 0, 255, 0, 255 };    // Verde
+	Color cSensor = { 255, 0, 0, 150 };    // Rojo semitransparente
+
+	for (b2Body* b = world->GetBodyList(); b; b = b->GetNext())
+	{
+		for (b2Fixture* f = b->GetFixtureList(); f; f = f->GetNext())
+		{
+			Color color = f->IsSensor() ? cSensor : cNormal;
+
+			switch (f->GetType())
+			{
+			case b2Shape::e_circle:
+			{
+				b2CircleShape* circle = (b2CircleShape*)f->GetShape();
+				b2Vec2 pos = b->GetPosition();
+				render->DrawCircle(
+					METERS_TO_PIXELS(pos.x),
+					METERS_TO_PIXELS(pos.y),
+					METERS_TO_PIXELS(circle->m_radius),
+					color
+				);
+				break;
+			}
+
+			case b2Shape::e_polygon:
+			{
+				b2PolygonShape* poly = (b2PolygonShape*)f->GetShape();
+				int count = poly->m_count;
+				b2Vec2 prev, v;
+				for (int i = 0; i < count; ++i)
+				{
+					v = b->GetWorldPoint(poly->m_vertices[i]);
+					if (i > 0)
+						render->DrawLine(METERS_TO_PIXELS(prev.x), METERS_TO_PIXELS(prev.y),
+							METERS_TO_PIXELS(v.x), METERS_TO_PIXELS(v.y),
+							color);
+					prev = v;
+				}
+				// cerrar el polígono
+				v = b->GetWorldPoint(poly->m_vertices[0]);
+				render->DrawLine(METERS_TO_PIXELS(prev.x), METERS_TO_PIXELS(prev.y),
+					METERS_TO_PIXELS(v.x), METERS_TO_PIXELS(v.y),
+					color);
+				break;
+			}
+
+			case b2Shape::e_chain:
+			{
+				b2ChainShape* chain = (b2ChainShape*)f->GetShape();
+				b2Vec2 prev, v;
+				for (int i = 0; i < chain->m_count; ++i)
+				{
+					v = b->GetWorldPoint(chain->m_vertices[i]);
+					if (i > 0)
+						render->DrawLine(METERS_TO_PIXELS(prev.x), METERS_TO_PIXELS(prev.y),
+							METERS_TO_PIXELS(v.x), METERS_TO_PIXELS(v.y),
+							color);
+					prev = v;
+				}
+				break;
+			}
+			}
+		}
+	}
+
 }

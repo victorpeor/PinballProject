@@ -24,22 +24,123 @@ bool ModuleGame::Start()
     texFlipperRight = LoadTexture("assets/palanca.png");
     texSpring = LoadTexture("assets/Spring.png");
     // Crear la bola 
-    ball = App->physics->CreateCircle(470, 200, 10);
+    ball = App->physics->CreateCircle(465, 200, 10);
     ball->listener = this;
 
     // Crear las palas (flippers)
-    leftFlipper = App->physics->CreateFlipper(150, 600, texFlipperLeft.width, texFlipperLeft.height, true);
-    rightFlipper = App->physics->CreateFlipper(300, 600, texFlipperLeft.width, texFlipperLeft.height, false);
+    leftFlipper = App->physics->CreateFlipper(150, 610, texFlipperLeft.width, texFlipperLeft.height, true);
+    rightFlipper = App->physics->CreateFlipper(300, 610, texFlipperLeft.width, texFlipperLeft.height, false);
 
-    spring = App->physics->CreateSpring(470, 400, texSpring.width, texSpring.height); //Ajustar posiciones
+    spring = App->physics->CreateSpring(465, 380, texSpring.width, texSpring.height); //Ajustar posiciones
 
+    resetZone = App->physics->CreateRectangleSensor(230, 630, 250, 5);
     // Paredes y bordes del tablero
-    const int chain_points[] = {
-        100, 100, 700, 100, 700, 800, 100, 800
+    const int bordeExterior[] = {
+        428, 7,
+        104, 7,
+        64,  40,
+        44,  88,
+        31,  150,
+        31,  164,
+        16,  189,
+        19,  321,
+        25,  340,
+        49,  370,
+        52,  433,
+        32,  458,
+        32,  601,
+        93,  640,
+        354, 640,
+        415, 600,
+        415, 469,
+        400, 454,
+        400, 421,
+        420, 399,
+        428, 368,
+        429, 88,
+        417, 71,
+        407, 69,
+        361, 94,
+        355, 87,
+        394, 52,
+        419, 54,
+        434, 65,
+        448, 90,
+        448, 477,
+        479, 477,
+        479, 71,
+        466, 37,
+        446, 13,
     };
-    App->physics->CreateChain(0, 0, chain_points, 8);
-
     
+    const int bordeInterior1[] = {
+        393, 342,
+        393, 148,
+        374, 148,
+        372, 228,
+        364, 251,
+        344, 267,
+        318, 275,
+        296, 275,
+        313, 286,
+        298, 298,
+        376, 352
+    };
+    
+    const int bordeInterior2[] = {
+        111, 41,
+        85,  60,
+        70,  99,
+        68,  131,
+        85,  143,
+        144, 83,
+        148, 63
+
+    };
+    
+    const int bordeInterior3[] = {
+        81,192,
+        66,227,
+        67,295,
+        73,319,
+        106,345,
+        142,309,
+        159,302,
+        145,295,
+        143,278,
+        156,271,
+        121,259,
+        97,228
+
+    };
+    
+    const int bordeInterior4[] = {
+        77, 513,
+        77, 577,
+        141,613,
+        149,599,
+        93, 568,
+        90, 512
+
+
+    };
+    
+    const int bordeInterior5[] = {
+        369, 513,
+        369, 577,
+        304,613,
+        297,599,
+        356, 568,
+        356, 512
+
+
+    };
+    App->physics->CreatePolygonWall(bordeExterior, 68, 6.0f, true);
+    App->physics->CreatePolygonWall(bordeInterior1, 22, 6.0f, true);
+    App->physics->CreatePolygonWall(bordeInterior2, 14, 6.0f, true);
+    App->physics->CreatePolygonWall(bordeInterior3, 24, 6.0f, true);
+    App->physics->CreatePolygonWall(bordeInterior4, 12, 6.0f, true);
+    App->physics->CreatePolygonWall(bordeInterior5, 12, 6.0f, true);
 
     return true;
 }
@@ -47,7 +148,7 @@ bool ModuleGame::Start()
 update_status ModuleGame::Update()
 {
     // Velocidad máxima al presionar la tecla
-    float flipperSpeed = 20.0f;
+    float flipperSpeed = 5.0f;
     if (IsKeyDown(KEY_LEFT)) {
         App->physics->MoveFlipper(leftFlipper, -flipperSpeed); // subir
     }
@@ -68,8 +169,31 @@ update_status ModuleGame::Update()
     }
     else {
         // Soltar spring y lanzar bola
-        ((b2PrismaticJoint*)spring->joint)->SetMotorSpeed(-727.0f);
+        ((b2PrismaticJoint*)spring->joint)->SetMotorSpeed(-50.0f);
     }
+    if (IsKeyPressed(KEY_F1))
+    {
+        debug = !debug;
+    }
+    if (IsKeyDown(KEY_F2)) {
+        resetBall = true;
+    }
+    
+
+    if (ball && ball->body)
+    {
+        float maxSpeed = 10.0f; // m/s
+        b2Vec2 vel = ball->body->GetLinearVelocity();
+        
+        float speed = vel.Length();
+
+        if (speed > maxSpeed)
+        {
+            vel *= maxSpeed / speed;
+            ball->body->SetLinearVelocity(vel);
+        }
+    }
+
     // Reiniciar la bola si cae fuera del tablero
     int x, y;
     ball->GetPhysicPosition(x, y);
@@ -85,6 +209,13 @@ update_status ModuleGame::Update()
 
 update_status ModuleGame::PostUpdate()
 {
+    if (resetBall) {
+        resetBall = false;
+        ball->body->SetTransform(b2Vec2(PIXEL_TO_METERS(465), PIXEL_TO_METERS(200)), 0);
+        ball->body->SetLinearVelocity(b2Vec2(0, 0));
+        ball->body->SetAngularVelocity(0);
+    }
+
     // --- Mapa y bola ---
     DrawTexture(texMap, 0, 0, WHITE);
 
@@ -172,6 +303,9 @@ update_status ModuleGame::PostUpdate()
         WHITE
     );
 
+    if (debug)
+        App->physics->DrawDebug(App->renderer);
+
     return UPDATE_CONTINUE;
 }
 
@@ -185,4 +319,10 @@ void ModuleGame::OnCollision(PhysBody* bodyA, PhysBody* bodyB)
 {
     // Ejemplo: reproducir sonido o sumar puntos
     App->audio->PlayFx(bonus_fx);
+
+    if (bodyA == ball && bodyB == resetZone || bodyB == ball && bodyA == resetZone)
+    {
+        // Reiniciar posición y velocidad de la bola
+        resetBall = true;
+    }
 }

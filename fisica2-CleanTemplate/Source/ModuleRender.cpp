@@ -95,3 +95,18 @@ bool ModuleRender::DrawText(const char * text, int x, int y, Font font, int spac
 
     return ret;
 }
+
+void ModuleRender::DrawCircle(int x, int y, int radius, Color color) const
+{
+    ::DrawCircle(x, y, radius, color); // Raylib DrawCircle
+}
+
+void ModuleRender::DrawLine(int x1, int y1, int x2, int y2, Color color) const
+{
+    ::DrawLine(x1, y1, x2, y2, color); // Raylib DrawLine
+}
+
+void ModuleRender::DrawRectangle(int x, int y, int w, int h, Color color) const
+{
+    ::DrawRectangle(x, y, w, h, color); // Raylib DrawRectangle
+}
