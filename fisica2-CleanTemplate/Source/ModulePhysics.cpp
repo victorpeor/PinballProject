@@ -471,7 +471,51 @@ void ModulePhysics::MoveFlipper(PhysBody* flipper, float speed)
 
 	if (flipper && flipper->joint)
 	{
-		flipper->joint->SetMotorSpeed(speed);
-		
+		b2RevoluteJoint* rJoint = (b2RevoluteJoint*)flipper->joint;
+		rJoint->SetMotorSpeed(speed);
 	}
+}
+
+PhysBody* ModulePhysics::CreateSpring(int x, int y, int width, int height)
+{
+	PhysBody* spring = new PhysBody();
+
+	// Cuerpo dinámico del spring
+	b2BodyDef bodyDef;
+	bodyDef.type = b2_dynamicBody;
+	bodyDef.position.Set(PIXEL_TO_METERS(x), PIXEL_TO_METERS(y));
+	bodyDef.userData.pointer = reinterpret_cast<uintptr_t>(spring);
+
+	b2Body* body = world->CreateBody(&bodyDef);
+
+	b2PolygonShape box;
+	box.SetAsBox(PIXEL_TO_METERS(width) / 2, PIXEL_TO_METERS(height) / 2);
+
+	b2FixtureDef fixture;
+	fixture.shape = &box;
+	fixture.density = 1.0f;
+	fixture.friction = 0.3f;
+	body->CreateFixture(&fixture);
+
+	// Prismatic joint para limitar movimiento vertical
+	b2PrismaticJointDef jointDef;
+	b2BodyDef staticDef;
+	staticDef.type = b2_staticBody;
+	staticDef.position = body->GetPosition();
+	b2Body* anchor = world->CreateBody(&staticDef);
+
+	jointDef.bodyA = anchor;
+	jointDef.bodyB = body;
+	jointDef.localAxisA.Set(0, 1);          // eje vertical
+	jointDef.enableLimit = true;
+	jointDef.lowerTranslation = 0.0f;      // posición mínima
+	jointDef.upperTranslation = PIXEL_TO_METERS(50); // máximo hacia abajo
+	jointDef.enableMotor = true;
+	jointDef.motorSpeed = 0.0f;            // se controla en Update()
+	jointDef.maxMotorForce = 2000.0f;
+
+	spring->joint = world->CreateJoint(&jointDef);
+	spring->body = body;
+
+	return spring;
 }

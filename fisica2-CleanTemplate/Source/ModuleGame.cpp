@@ -19,17 +19,19 @@ bool ModuleGame::Start()
     LOG("Starting Pinball Scene");
 
     texBall = LoadTexture("assets/bola.png");
-    //texMap = LoadTexture("assets/mapa.png");
+    texMap = LoadTexture("assets/mapa.png");
     texFlipperLeft = LoadTexture("assets/palanca_inverted.png");
     texFlipperRight = LoadTexture("assets/palanca.png");
-
+    texSpring = LoadTexture("assets/Spring.png");
     // Crear la bola 
-    ball = App->physics->CreateCircle(400, 200, 10);
+    ball = App->physics->CreateCircle(470, 200, 10);
     ball->listener = this;
 
     // Crear las palas (flippers)
-    leftFlipper = App->physics->CreateFlipper(300, 500, texFlipperLeft.width, texFlipperLeft.height, true);
-    rightFlipper = App->physics->CreateFlipper(500, 500, texFlipperLeft.width, texFlipperLeft.height, false);
+    leftFlipper = App->physics->CreateFlipper(150, 600, texFlipperLeft.width, texFlipperLeft.height, true);
+    rightFlipper = App->physics->CreateFlipper(300, 600, texFlipperLeft.width, texFlipperLeft.height, false);
+
+    spring = App->physics->CreateSpring(470, 400, texSpring.width, texSpring.height); //Ajustar posiciones
 
     // Paredes y bordes del tablero
     const int chain_points[] = {
@@ -59,7 +61,15 @@ update_status ModuleGame::Update()
     else {
         App->physics->MoveFlipper(rightFlipper, -flipperSpeed); // bajar
     }
-
+    if (IsKeyDown(KEY_DOWN)) {
+        // Comprimir spring
+        ((b2PrismaticJoint*)spring->joint)->SetMotorSpeed(5.0f);  
+       
+    }
+    else {
+        // Soltar spring y lanzar bola
+        ((b2PrismaticJoint*)spring->joint)->SetMotorSpeed(-727.0f);
+    }
     // Reiniciar la bola si cae fuera del tablero
     int x, y;
     ball->GetPhysicPosition(x, y);
@@ -135,6 +145,32 @@ update_status ModuleGame::PostUpdate()
         pivotRight,
         angleRight,
         WHITE);
+
+    //Spring
+    int sx, sy;
+    spring->GetPhysicPosition(sx, sy);
+
+    float w = (float)texSpring.width;
+    float h = (float)texSpring.height;
+
+    // Pivote = centro de la textura
+    Vector2 pivot = { w / 2, h / 2 };
+    
+    // DestRect = posicionar textura sobre el cuerpo físico
+    Rectangle dest = {
+        (float)sx,
+        (float)sy,
+        w,
+        h
+    };
+
+    DrawTexturePro(texSpring,
+        { 0, 0, w, h }, // toda la textura
+        dest,
+        pivot,
+        0.0f, // ángulo en grados, para el spring normalmente es vertical
+        WHITE
+    );
 
     return UPDATE_CONTINUE;
 }

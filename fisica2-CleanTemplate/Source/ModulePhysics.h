@@ -30,7 +30,7 @@ public:
 public:
 	int width, height;
 	b2Body* body;
-	b2RevoluteJoint* joint;
+	b2Joint* joint;
 	Module* listener;
 };
 
@@ -51,11 +51,13 @@ public:
 	PhysBody* CreateRectangleSensor(int x, int y, int width, int height);
 	PhysBody* CreateChain(int x, int y, const int* points, int size);
 	PhysBody* CreateFlipper(int x, int y, int width, int height, bool left);
+	PhysBody* CreateSpring(int x, int y, int width, int height);
 	void ApplyTorque(PhysBody* body, float torque);
 	// b2ContactListener ---
 	void BeginContact(b2Contact* contact);
 	void DestroyBody(PhysBody* body);
 	void MoveFlipper(PhysBody* flipper, float speed);
+	
 private:
 
 	bool debug;

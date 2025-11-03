@@ -24,9 +24,10 @@ private:
     PhysBody* ball = nullptr;
     PhysBody* leftFlipper = nullptr;
     PhysBody* rightFlipper = nullptr;
-
+    PhysBody* spring = nullptr;
     // Texturas opcionales para renderizar
     Texture2D texBall{};
+    Texture2D texSpring{};
     Texture2D texMap{};
     Texture2D texFlipperLeft{};
     Texture2D texFlipperRight{};
