@@ -19,7 +19,7 @@ bool ModuleGame::Start()
     LOG("Starting Pinball Scene");
 
     texBall = LoadTexture("assets/bola.png");
-    texMap = LoadTexture("assets/mapa.png");
+    texMap = LoadTexture("assets/map.png");
     texFlipperLeft = LoadTexture("assets/palanca_inverted.png");
     texFlipperRight = LoadTexture("assets/palanca.png");
     texSpring = LoadTexture("assets/Spring.png");
