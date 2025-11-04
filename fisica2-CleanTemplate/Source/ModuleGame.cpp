@@ -23,6 +23,7 @@ bool ModuleGame::Start()
     texFlipperLeft = LoadTexture("assets/palanca_inverted.png");
     texFlipperRight = LoadTexture("assets/palanca.png");
     texSpring = LoadTexture("assets/Spring.png");
+    textCollectible = LoadTexture("assets/wheel.png");
     // Crear la bola 
     ball = App->physics->CreateCircle(465, 200, 10);
     ball->listener = this;
@@ -31,9 +32,33 @@ bool ModuleGame::Start()
     leftFlipper = App->physics->CreateFlipper(150, 610, texFlipperLeft.width, texFlipperLeft.height, true);
     rightFlipper = App->physics->CreateFlipper(300, 610, texFlipperLeft.width, texFlipperLeft.height, false);
 
-    spring = App->physics->CreateSpring(465, 380, texSpring.width, texSpring.height); //Ajustar posiciones
+    bumper = App->physics->CreateBumper(235, 64, 25, 1.5f);
+    bumper2 = App->physics->CreateBumper(168, 170, 7, 1.5f);
+    bumper3 = App->physics->CreateBumper(296, 170, 7, 1.5f);
 
-    resetZone = App->physics->CreateRectangleSensor(230, 630, 250, 5);
+    spring = App->physics->CreateSpring(465, 360, texSpring.width, texSpring.height); //Ajustar posiciones
+
+    resetZone = App->physics->CreateRectangleSensor(230, 635, 250, 5);
+
+    collectible1 = App->physics->CreateCollectible(68, 62, 10);
+    collectible2 = App->physics->CreateCollectible(398, 111, 8);
+    collectible3 = App->physics->CreateCollectible(224, 287, 12);
+
+    const int trianglePoints1[] = {
+    322, 489,
+    320, 521,
+    290, 537
+
+    };
+    App->physics->CreateTriangularBumper(0, 0, trianglePoints1, 6, 1.5f);
+
+    const int trianglePoints2[] = {
+    127, 489,
+    127, 521,
+    157, 537
+
+    };
+    App->physics->CreateTriangularBumper(0, 0, trianglePoints2, 6, 1.5f);
     // Paredes y bordes del tablero
     const int bordeExterior[] = {
         428, 7,
@@ -89,13 +114,12 @@ bool ModuleGame::Start()
     
     const int bordeInterior2[] = {
         111, 41,
-        85,  60,
+        87,  62,
         70,  99,
         68,  131,
         85,  143,
         144, 83,
         148, 63
-
     };
     
     const int bordeInterior3[] = {
@@ -111,36 +135,33 @@ bool ModuleGame::Start()
         156,271,
         121,259,
         97,228
-
     };
     
     const int bordeInterior4[] = {
-        77, 513,
+        77, 480,
         77, 577,
         141,613,
         149,599,
         93, 568,
-        90, 512
-
-
+        90, 480,
     };
     
     const int bordeInterior5[] = {
-        369, 513,
+        369, 480,
         369, 577,
         304,613,
         297,599,
         356, 568,
-        356, 512
-
-
+        356, 480
     };
+    
     App->physics->CreatePolygonWall(bordeExterior, 68, 6.0f, true);
     App->physics->CreatePolygonWall(bordeInterior1, 22, 6.0f, true);
     App->physics->CreatePolygonWall(bordeInterior2, 14, 6.0f, true);
     App->physics->CreatePolygonWall(bordeInterior3, 24, 6.0f, true);
     App->physics->CreatePolygonWall(bordeInterior4, 12, 6.0f, true);
     App->physics->CreatePolygonWall(bordeInterior5, 12, 6.0f, true);
+    
 
     return true;
 }
@@ -148,7 +169,7 @@ bool ModuleGame::Start()
 update_status ModuleGame::Update()
 {
     // Velocidad máxima al presionar la tecla
-    float flipperSpeed = 5.0f;
+    float flipperSpeed = 15.0f;
     if (IsKeyDown(KEY_LEFT)) {
         App->physics->MoveFlipper(leftFlipper, -flipperSpeed); // subir
     }
@@ -169,7 +190,7 @@ update_status ModuleGame::Update()
     }
     else {
         // Soltar spring y lanzar bola
-        ((b2PrismaticJoint*)spring->joint)->SetMotorSpeed(-50.0f);
+        ((b2PrismaticJoint*)spring->joint)->SetMotorSpeed(-150.0f);
     }
     if (IsKeyPressed(KEY_F1))
     {
@@ -303,6 +324,86 @@ update_status ModuleGame::PostUpdate()
         WHITE
     );
 
+    
+
+    // --- Dibujar collectible 1 ---
+    if (collectible1 && collectible1->body && !collectible1->pendingToDelete)
+    {
+        b2Vec2 pos = collectible1->body->GetPosition();
+        
+        float angle = collectible1->body->GetAngle() * RAD2DEG;
+
+        float scale = 0.4f; // ajusta este número según el tamaño que quieras
+
+        int x = METERS_TO_PIXELS(pos.x);
+        int y = METERS_TO_PIXELS(pos.y);
+
+        int drawWidth = (int)(textCollectible.width * scale);
+        int drawHeight = (int)(textCollectible.height * scale);
+
+        // dibuja centrado en la posición del cuerpo
+        DrawTexturePro(
+            textCollectible,
+            { 0, 0, (float)textCollectible.width, (float)textCollectible.height }, // rect fuente
+            { (float)x, (float)y, (float)drawWidth, (float)drawHeight },           // rect destino
+            { drawWidth / 2.0f, drawHeight / 2.0f },                              // pivote (centro)
+            0.0f,
+            WHITE
+        );
+    }
+
+    // --- Dibujar collectible 2 ---
+    if (collectible2 && collectible2->body && !collectible2->pendingToDelete)
+    {
+        b2Vec2 pos = collectible2->body->GetPosition();
+
+        float angle = collectible2->body->GetAngle() * RAD2DEG;
+
+        float scale = 0.4f; // ajusta este número según el tamaño que quieras
+
+        int x = METERS_TO_PIXELS(pos.x);
+        int y = METERS_TO_PIXELS(pos.y);
+
+        int drawWidth = (int)(textCollectible.width * scale);
+        int drawHeight = (int)(textCollectible.height * scale);
+
+        // dibuja centrado en la posición del cuerpo
+        DrawTexturePro(
+            textCollectible,
+            { 0, 0, (float)textCollectible.width, (float)textCollectible.height }, // rect fuente
+            { (float)x, (float)y, (float)drawWidth, (float)drawHeight },           // rect destino
+            { drawWidth / 2.0f, drawHeight / 2.0f },                              // pivote (centro)
+            0.0f,
+            WHITE
+        );
+    }
+
+    // --- Dibujar collectible 3 ---
+    if (collectible3 && collectible3->body && !collectible3->pendingToDelete)
+    {
+        b2Vec2 pos = collectible3->body->GetPosition();
+
+        float angle = collectible3->body->GetAngle() * RAD2DEG;
+
+        float scale = 0.4f; // ajusta este número según el tamaño que quieras
+
+        int x = METERS_TO_PIXELS(pos.x);
+        int y = METERS_TO_PIXELS(pos.y);
+
+        int drawWidth = (int)(textCollectible.width * scale);
+        int drawHeight = (int)(textCollectible.height * scale);
+
+        // dibuja centrado en la posición del cuerpo
+        DrawTexturePro(
+            textCollectible,
+            { 0, 0, (float)textCollectible.width, (float)textCollectible.height }, // rect fuente
+            { (float)x, (float)y, (float)drawWidth, (float)drawHeight },           // rect destino
+            { drawWidth / 2.0f, drawHeight / 2.0f },                              // pivote (centro)
+            0.0f,
+            WHITE
+        );
+    }
+
     if (debug)
         App->physics->DrawDebug(App->renderer);
 
@@ -324,5 +425,17 @@ void ModuleGame::OnCollision(PhysBody* bodyA, PhysBody* bodyB)
     {
         // Reiniciar posición y velocidad de la bola
         resetBall = true;
+    }
+    if (bodyA == ball && bodyB == bumper || bodyB == ball && bodyA == bumper)
+    {
+        // cambia color, reproduce sonido, aumenta puntuación, etc.
+    }
+    if (bodyA == ball && (bodyB == collectible1 || bodyB == collectible2 || bodyB == collectible3) )
+    {
+        bodyB->pendingToDelete = true;
+        
+    }
+    else if (bodyB == ball && (bodyA == collectible1 || bodyA == collectible2 || bodyA == collectible3)){
+        bodyA->pendingToDelete = true;
     }
 }

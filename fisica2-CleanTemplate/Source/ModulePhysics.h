@@ -29,6 +29,7 @@ public:
 
 public:
 	int width, height;
+	bool pendingToDelete = false;
 	b2Body* body;
 	b2Joint* joint;
 	Module* listener;
@@ -52,8 +53,14 @@ public:
 	PhysBody* CreateChain(int x, int y, const int* points, int size);
 	PhysBody* CreateFlipper(int x, int y, int width, int height, bool left);
 	PhysBody* CreateSpring(int x, int y, int width, int height);
+	PhysBody* CreateBumper(int x, int y, int radius, float restitution);
+	PhysBody* CreateTriangularBumper(int x, int y, const int* points, int count, float restitution);
+	PhysBody* CreateCollectible(int x, int y, float radius);
+
 	void CreatePolygonWall(const int* points, int size, float thickness, bool closedLoop);
+
 	void DrawDebug(ModuleRender* render);
+	
 	void ApplyTorque(PhysBody* body, float torque);
 	// b2ContactListener ---
 	void BeginContact(b2Contact* contact);

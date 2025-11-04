@@ -64,7 +64,6 @@ PhysBody* ModulePhysics::CreateCircle(int x, int y, int radius)
 	
 	body.position.Set(PIXEL_TO_METERS(x), PIXEL_TO_METERS(y));
 	body.userData.pointer = reinterpret_cast<uintptr_t>(pbody);
-
 	b2Body* b = world->CreateBody(&body);
 
 	b2CircleShape shape;
@@ -183,6 +182,20 @@ update_status ModulePhysics::PostUpdate()
 	// You need to provide your own macro to translate meters to pixels
 	for (b2Body* b = world->GetBodyList(); b; b = b->GetNext())
 	{
+
+		b2Body* nextBody = b->GetNext(); // Guardamos el siguiente por si eliminamos este
+
+		PhysBody* pbody = (PhysBody*)b->GetUserData().pointer;
+
+		// --- 🔥 Destruir cuerpos pendientes ---
+		if (pbody != nullptr && pbody->pendingToDelete)
+		{
+			world->DestroyBody(b);
+			delete pbody;
+			b = nextBody;
+			continue; // saltamos al siguiente cuerpo
+		}
+
 		for (b2Fixture* f = b->GetFixtureList(); f; f = f->GetNext())
 		{
 			switch (f->GetType())
@@ -408,6 +421,7 @@ PhysBody* ModulePhysics::CreateFlipper(int x, int y, int width, int height, bool
 	fixture.shape = &box;
 	fixture.density = 1.0f;
 	fixture.friction = 0.3f;
+	fixture.restitution = 0.0f;
 	body->CreateFixture(&fixture);
 
 	// 2. Crear joint motorizado con ground como bodyA
@@ -433,7 +447,7 @@ PhysBody* ModulePhysics::CreateFlipper(int x, int y, int width, int height, bool
 	}
 
 	jointDef.enableMotor = true;
-	jointDef.maxMotorTorque = 1000.0f;
+	jointDef.maxMotorTorque = 2500.0f;
 
 	flipper->joint = (b2RevoluteJoint*)world->CreateJoint(&jointDef);
 
@@ -609,4 +623,102 @@ void ModulePhysics::DrawDebug(ModuleRender* render)
 		}
 	}
 
+}
+PhysBody* ModulePhysics::CreateBumper(int x, int y, int radius, float restitution)
+{
+	PhysBody* bumper = new PhysBody();
+
+	// Cuerpo estático (no se mueve, pero puede colisionar)
+	b2BodyDef bodyDef;
+	bodyDef.type = b2_staticBody;
+	bodyDef.position.Set(PIXEL_TO_METERS(x), PIXEL_TO_METERS(y));
+	bodyDef.userData.pointer = reinterpret_cast<uintptr_t>(bumper);
+
+	b2Body* body = world->CreateBody(&bodyDef);
+
+	// Forma circular
+	b2CircleShape shape;
+	shape.m_radius = PIXEL_TO_METERS(radius);
+
+	// Fixture con rebote alto
+	b2FixtureDef fixture;
+	fixture.shape = &shape;
+	fixture.density = 1.0f;
+	fixture.restitution = restitution; // rebote
+	fixture.friction = 0.0f;
+	body->CreateFixture(&fixture);
+
+	bumper->body = body;
+
+	return bumper;
+}
+PhysBody* ModulePhysics::CreateTriangularBumper(int x, int y, const int* points, int count, float restitution)
+{
+	PhysBody* bumper = new PhysBody();
+
+	b2BodyDef bodyDef;
+	bodyDef.type = b2_staticBody;
+	bodyDef.position.Set(PIXEL_TO_METERS(x), PIXEL_TO_METERS(y));
+	b2Body* body = world->CreateBody(&bodyDef);
+
+	// Convertir los puntos del array a coordenadas Box2D
+	b2Vec2 verts[3];
+	for (int i = 0; i < 3; ++i)
+		verts[i].Set(PIXEL_TO_METERS(points[i * 2]), PIXEL_TO_METERS(points[i * 2 + 1]));
+
+	// --- Lado activo (rebote fuerte): entre el primer y el último punto ---
+	b2EdgeShape activeEdge;
+	activeEdge.SetTwoSided(verts[0], verts[2]);
+	b2FixtureDef fActive;
+	fActive.shape = &activeEdge;
+	fActive.restitution = restitution;   // rebote fuerte (ej. 1.5f)
+	fActive.friction = 0.0f;
+	body->CreateFixture(&fActive);
+
+	// --- Lado pasivo 1 ---
+	b2EdgeShape passiveEdge1;
+	passiveEdge1.SetTwoSided(verts[0], verts[1]);
+	b2FixtureDef fPassive1;
+	fPassive1.shape = &passiveEdge1;
+	fPassive1.restitution = 0.0f;
+	fPassive1.friction = 0.3f;
+	body->CreateFixture(&fPassive1);
+
+	// --- Lado pasivo 2 ---
+	b2EdgeShape passiveEdge2;
+	passiveEdge2.SetTwoSided(verts[1], verts[2]);
+	b2FixtureDef fPassive2;
+	fPassive2.shape = &passiveEdge2;
+	fPassive2.restitution = 0.0f;
+	fPassive2.friction = 0.3f;
+	body->CreateFixture(&fPassive2);
+
+	bumper->body = body;
+	return bumper;
+}
+PhysBody* ModulePhysics::CreateCollectible(int x, int y, float radius)
+{
+	PhysBody* collectible = new PhysBody();
+
+	b2BodyDef bodyDef;
+	bodyDef.type = b2_staticBody;  // No se mueve
+	bodyDef.position.Set(PIXEL_TO_METERS(x), PIXEL_TO_METERS(y));
+	bodyDef.userData.pointer = reinterpret_cast<uintptr_t>(collectible);
+	b2Body* body = world->CreateBody(&bodyDef);
+
+	b2CircleShape shape;
+	shape.m_radius = PIXEL_TO_METERS(radius);
+
+	b2FixtureDef fixtureDef;
+	fixtureDef.shape = &shape;
+	fixtureDef.isSensor = true;
+	fixtureDef.restitution = 0.0f;
+
+	body->CreateFixture(&fixtureDef);
+
+	collectible->body = body;
+	collectible->width = radius * 2;
+	collectible->height = radius * 2;
+
+	return collectible;
 }
