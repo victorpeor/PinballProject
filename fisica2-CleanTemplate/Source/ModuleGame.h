@@ -55,6 +55,8 @@ private:
     bool leftFlipperPressed = false;
     bool rightFlipperPressed = false;
     bool springPressed = false;
+    int score = 0;
+
     // Función auxiliar para renderizar objetos
     //void DrawBall();
 };

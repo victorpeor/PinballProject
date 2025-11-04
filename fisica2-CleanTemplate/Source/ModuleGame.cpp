@@ -29,13 +29,14 @@ bool ModuleGame::Start()
     texFlipperLeft = LoadTexture("assets/palanca_inverted.png");
     texFlipperRight = LoadTexture("assets/palanca.png");
     texSpring = LoadTexture("assets/Spring.png");
-    textCollectible = LoadTexture("assets/wheel.png");
+    textCollectible = LoadTexture("assets/puntos.png");
     springsound = App->audio->LoadFx("assets/springsound.wav");
     background_music = App->audio->LoadFx("assets/background_music.wav");
     flipersound = App->audio->LoadFx("assets/flipper.wav");
     ballvoid = App->audio->LoadFx("assets/ball_void.wav");
     newball = App->audio->LoadFx("assets/new-ball.wav");
-    
+    bonus_fx = App->audio->LoadFx("assets/bonus.wav");
+
     //Inicializamos la musica de fondo
     App->audio->PlayFx(background_music);
 
@@ -375,7 +376,7 @@ update_status ModuleGame::PostUpdate()
         
         float angle = collectible1->body->GetAngle() * RAD2DEG;
 
-        float scale = 0.4f; // ajusta este número según el tamaño que quieras
+        float scale = 0.8f; 
 
         int x = METERS_TO_PIXELS(pos.x);
         int y = METERS_TO_PIXELS(pos.y);
@@ -401,7 +402,7 @@ update_status ModuleGame::PostUpdate()
 
         float angle = collectible2->body->GetAngle() * RAD2DEG;
 
-        float scale = 0.4f; // ajusta este número según el tamaño que quieras
+        float scale = 0.8f; 
 
         int x = METERS_TO_PIXELS(pos.x);
         int y = METERS_TO_PIXELS(pos.y);
@@ -427,7 +428,7 @@ update_status ModuleGame::PostUpdate()
 
         float angle = collectible3->body->GetAngle() * RAD2DEG;
 
-        float scale = 0.4f; // ajusta este número según el tamaño que quieras
+        float scale = 0.8f; 
 
         int x = METERS_TO_PIXELS(pos.x);
         int y = METERS_TO_PIXELS(pos.y);
@@ -448,6 +449,9 @@ update_status ModuleGame::PostUpdate()
 
     if (debug)
         App->physics->DrawDebug(App->renderer);
+
+    // --- Mostrar puntuación en pantalla ---
+    DrawText(TextFormat("SCORE: %d", score), 20, 20, 30, WHITE);
 
     return UPDATE_CONTINUE;
 }
@@ -475,9 +479,15 @@ void ModuleGame::OnCollision(PhysBody* bodyA, PhysBody* bodyB)
     if (bodyA == ball && (bodyB == collectible1 || bodyB == collectible2 || bodyB == collectible3) )
     {
         bodyB->pendingToDelete = true;
+        score += 100; // suma 100 puntos por collectible
+        App->audio->PlayFx(bonus_fx);
+
         
     }
     else if (bodyB == ball && (bodyA == collectible1 || bodyA == collectible2 || bodyA == collectible3)){
         bodyA->pendingToDelete = true;
+        score += 100; // suma también aquí
+        App->audio->PlayFx(bonus_fx);
+
     }
 }
