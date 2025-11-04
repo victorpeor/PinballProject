@@ -10,6 +10,12 @@ ModuleGame::ModuleGame(Application* app, bool start_enabled) : Module(app, start
     ball = nullptr;
     leftFlipper = nullptr;
     rightFlipper = nullptr;
+    //Inicializar sonidos
+    springsound = 0;
+    background_music = 0;
+    flipersound = 0;
+    ballvoid = 0;
+    newball = 0;
 }
 
 ModuleGame::~ModuleGame() {}
@@ -24,6 +30,15 @@ bool ModuleGame::Start()
     texFlipperRight = LoadTexture("assets/palanca.png");
     texSpring = LoadTexture("assets/Spring.png");
     textCollectible = LoadTexture("assets/wheel.png");
+    springsound = App->audio->LoadFx("assets/springsound.wav");
+    background_music = App->audio->LoadFx("assets/background_music.wav");
+    flipersound = App->audio->LoadFx("assets/flipper.wav");
+    ballvoid = App->audio->LoadFx("assets/ball_void.wav");
+    newball = App->audio->LoadFx("assets/new-ball.wav");
+    
+    //Inicializamos la musica de fondo
+    App->audio->PlayFx(background_music);
+
     // Crear la bola 
     ball = App->physics->CreateCircle(465, 200, 10);
     ball->listener = this;
@@ -170,28 +185,53 @@ update_status ModuleGame::Update()
 {
     // Velocidad máxima al presionar la tecla
     float flipperSpeed = 15.0f;
-    if (IsKeyDown(KEY_LEFT)) {
-        App->physics->MoveFlipper(leftFlipper, -flipperSpeed); // subir
+    if (IsKeyDown(KEY_LEFT))
+    {
+        App->physics->MoveFlipper(leftFlipper, -flipperSpeed);
+        if (!leftFlipperPressed)
+        {
+            App->audio->PlayFx(flipersound); // Sonido al presionar
+            leftFlipperPressed = true;
+        }
     }
-    else {
-        App->physics->MoveFlipper(leftFlipper, flipperSpeed);  // bajar
+    else
+    {
+        App->physics->MoveFlipper(leftFlipper, flipperSpeed);
+        leftFlipperPressed = false;
     }
 
-    if (IsKeyDown(KEY_RIGHT)) {
-        App->physics->MoveFlipper(rightFlipper, flipperSpeed); // subir
+    // Flipper derecho
+    if (IsKeyDown(KEY_RIGHT))
+    {
+        App->physics->MoveFlipper(rightFlipper, flipperSpeed);
+        if (!rightFlipperPressed)
+        {
+            App->audio->PlayFx(flipersound); // Sonido al presionar
+            rightFlipperPressed = true;
+        }
     }
-    else {
-        App->physics->MoveFlipper(rightFlipper, -flipperSpeed); // bajar
+    else
+    {
+        App->physics->MoveFlipper(rightFlipper, -flipperSpeed);
+        rightFlipperPressed = false;
     }
-    if (IsKeyDown(KEY_DOWN)) {
+    if (IsKeyDown(KEY_DOWN))
+    {
         // Comprimir spring
-        ((b2PrismaticJoint*)spring->joint)->SetMotorSpeed(5.0f);  
-       
+        ((b2PrismaticJoint*)spring->joint)->SetMotorSpeed(5.0f);
+        if (!springPressed)
+        {
+            App->audio->PlayFx(springsound); // Sonido al presionar
+            springPressed = true;
+        }
     }
-    else {
+    else
+    {
         // Soltar spring y lanzar bola
         ((b2PrismaticJoint*)spring->joint)->SetMotorSpeed(-150.0f);
+        springPressed = false;
     }
+
     if (IsKeyPressed(KEY_F1))
     {
         debug = !debug;
@@ -220,9 +260,11 @@ update_status ModuleGame::Update()
     ball->GetPhysicPosition(x, y);
     if (y > SCREEN_HEIGHT)
     {
+        App->audio->PlayFx(ballvoid);//Sonido cuando bola cae al vacio
         App->physics->DestroyBody(ball);
         ball = App->physics->CreateCircle(400, 200, 10);
         ball->listener = this;
+        App->audio->PlayFx(newball);
     }
 
     return UPDATE_CONTINUE;

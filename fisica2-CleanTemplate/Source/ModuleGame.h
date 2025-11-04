@@ -42,10 +42,19 @@ private:
     Texture2D texFlipperRight{};
     Texture2D textCollectible{};
 
+
     // Efectos de sonido, puntuación, etc.
+    unsigned int springsound;
+    unsigned int background_music;
+    unsigned int flipersound;
+    unsigned int ballvoid;
+    unsigned int newball;
     uint bonus_fx = 0;
     bool debug = false;
     bool resetBall = false;
+    bool leftFlipperPressed = false;
+    bool rightFlipperPressed = false;
+    bool springPressed = false;
     // Función auxiliar para renderizar objetos
     //void DrawBall();
 };
