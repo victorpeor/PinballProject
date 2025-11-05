@@ -55,6 +55,12 @@ private:
     bool leftFlipperPressed = false;
     bool rightFlipperPressed = false;
     bool springPressed = false;
+
+    // --- Puntuación básica ---
+    const int POINTS_COLLECTIBLE = 100;
+    const int POINTS_BUMPER_BIG = 50;
+    const int POINTS_BUMPER_SMALL = 25;
+
     int score = 0;
 
     // Función auxiliar para renderizar objetos

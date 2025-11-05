@@ -470,30 +470,47 @@ bool ModuleGame::CleanUp()
 
 void ModuleGame::OnCollision(PhysBody* bodyA, PhysBody* bodyB)
 {
-    // Ejemplo: reproducir sonido o sumar puntos
-    App->audio->PlayFx(bonus_fx);
+    // sonido genérico de colisión con algo puntuable
+    auto ping = [&]() { App->audio->PlayFx(bonus_fx); };
 
-    if (bodyA == ball && bodyB == resetZone || bodyB == ball && bodyA == resetZone)
+    // Reset si entra en la zona de reinicio
+    if ((bodyA == ball && bodyB == resetZone) || (bodyB == ball && bodyA == resetZone))
     {
-        // Reiniciar posición y velocidad de la bola
         resetBall = true;
+        return;
     }
-    if (bodyA == ball && bodyB == bumper || bodyB == ball && bodyA == bumper)
-    {
-        // cambia color, reproduce sonido, aumenta puntuación, etc.
-    }
-    if (bodyA == ball && (bodyB == collectible1 || bodyB == collectible2 || bodyB == collectible3) )
-    {
-        bodyB->pendingToDelete = true;
-        score += 100; // suma 100 puntos por collectible
-        App->audio->PlayFx(bonus_fx);
 
-        
+    // --- BUMPERS ---
+    if ((bodyA == ball && bodyB == bumper) || (bodyB == ball && bodyA == bumper))
+    {
+        score += POINTS_BUMPER_BIG;
+        ping();
     }
-    else if (bodyB == ball && (bodyA == collectible1 || bodyA == collectible2 || bodyA == collectible3)){
+
+    if ((bodyA == ball && bodyB == bumper2) || (bodyB == ball && bodyA == bumper2))
+    {
+        score += POINTS_BUMPER_SMALL;
+        ping();
+    }
+
+    if ((bodyA == ball && bodyB == bumper3) || (bodyB == ball && bodyA == bumper3))
+    {
+        score += POINTS_BUMPER_SMALL;
+        ping();
+    }
+
+    // --- COLLECTIBLES ---
+    if (bodyA == ball && (bodyB == collectible1 || bodyB == collectible2 || bodyB == collectible3))
+    {
+        bodyB->pendingToDelete = true;   // se elimina en PostUpdate de físicas
+        score += POINTS_COLLECTIBLE;
+        ping();
+    }
+    else if (bodyB == ball && (bodyA == collectible1 || bodyA == collectible2 || bodyA == collectible3))
+    {
         bodyA->pendingToDelete = true;
-        score += 100; // suma también aquí
-        App->audio->PlayFx(bonus_fx);
-
+        score += POINTS_COLLECTIBLE;
+        ping();
     }
+
 }
