@@ -45,6 +45,8 @@ private:
     Texture2D texLife{};
     Texture2D texLose{};
     bool gameOver = false;
+    Texture2D texMenu{};   
+    bool inMenu = true;    
     int lives = 3;
     bool loseLifePending = false;
 

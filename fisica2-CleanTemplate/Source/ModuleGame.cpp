@@ -26,6 +26,7 @@ bool ModuleGame::Start()
 {
     LOG("Starting Pinball Scene");
 
+    // Texturas
     texBall = LoadTexture("assets/bola.png");
     texMap = LoadTexture("assets/map.png");
     texFlipperLeft = LoadTexture("assets/palanca_inverted.png");
@@ -33,23 +34,23 @@ bool ModuleGame::Start()
     texSpring = LoadTexture("assets/Spring.png");
     textCollectible = LoadTexture("assets/puntos.png");
     texLife = LoadTexture("assets/Vidas.png");
-    texLose = LoadTexture("assets/loose.png"); // NUEVO: pantalla de derrota
+    texLose = LoadTexture("assets/loose.png");   // pantalla de derrota
+    texMenu = LoadTexture("assets/menu.png");    // NUEVO: pantalla de menú
 
-    // Cargar efectos de sonido
+    // Sonidos
     springsound = App->audio->LoadFx("assets/springsound.wav");
     flipersound = App->audio->LoadFx("assets/flipper.wav");
     ballvoid = App->audio->LoadFx("assets/ball_void.wav");
     newball = App->audio->LoadFx("assets/new-ball.wav");
     bonus_fx = App->audio->LoadFx("assets/bonus.wav");
 
-    // Inicializamos la música de fondo
+    // Música de fondo
     App->audio->PlayMusic("assets/background_music.wav");
 
-    // Crear la bola 
-    ball = App->physics->CreateCircle(465, 200, 10);
-    ball->listener = this;
+    // --- IMPORTANTE ---
+    // NO creamos la bola aquí. Se creará al pulsar ENTER desde el menú.
 
-    // Crear las palas (flippers)
+    // Crear palancas y resto de escenario
     leftFlipper = App->physics->CreateFlipper(150, 610, texFlipperLeft.width, texFlipperLeft.height, true);
     rightFlipper = App->physics->CreateFlipper(300, 610, texFlipperLeft.width, texFlipperLeft.height, false);
 
@@ -64,7 +65,7 @@ bool ModuleGame::Start()
     collectible2 = App->physics->CreateCollectible(398, 111, 8);
     collectible3 = App->physics->CreateCollectible(224, 287, 12);
 
-    // Bordes, bumpers triangulares, etc.
+    // Bordes y bumpers triangulares
     const int trianglePoints1[] = { 322, 489, 320, 521, 290, 537 };
     App->physics->CreateTriangularBumper(0, 0, trianglePoints1, 6, 1.5f);
 
@@ -114,7 +115,32 @@ bool ModuleGame::Start()
 
 update_status ModuleGame::Update()
 {
-    if (gameOver) return UPDATE_CONTINUE;
+    // --- MENÚ INICIAL ---
+    if (inMenu)
+    {
+        if (IsKeyPressed(KEY_ENTER))
+        {
+            // Empezar partida: crear la bola ahora
+            if (ball) { App->physics->DestroyBody(ball); ball = nullptr; }
+            ball = App->physics->CreateCircle(465, 200, 10);
+            ball->listener = this;
+
+            // Reset estado de partida por si venimos de un run previo
+            score = 0;
+            lives = 3;
+            loseLifePending = false;
+            resetBall = false;
+            leftFlipperPressed = rightFlipperPressed = springPressed = false;
+
+            inMenu = false;
+        }
+        // No procesar lógica de juego mientras estamos en menú
+        return UPDATE_CONTINUE;
+    }
+
+    // --- GAME OVER: solo mostrar pantalla (sin reinicio) ---
+    if (gameOver)
+        return UPDATE_CONTINUE;
 
     // Movimiento de flippers
     float flipperSpeed = 15.0f;
@@ -178,7 +204,7 @@ update_status ModuleGame::Update()
         }
     }
 
-    // Reiniciar la bola si cae fuera del tablero
+    // Reiniciar la bola si cae fuera
     if (ball)
     {
         int x, y;
@@ -209,13 +235,25 @@ update_status ModuleGame::Update()
 
 update_status ModuleGame::PostUpdate()
 {
-    // --- Mostrar pantalla de GAME OVER ---
+    // --- MENÚ INICIAL: dibujar y salir ---
+    if (inMenu)
+    {
+        Rectangle src = { 0, 0, (float)texMenu.width, (float)texMenu.height };
+        Rectangle dst = { 0, 0, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT };
+        Vector2 origin = { 0, 0 };
+        DrawTexturePro(texMenu, src, dst, origin, 0.0f, WHITE);
+
+        // (Opcional) texto ayuda
+        // DrawText("Pulsa ENTER para empezar", 70, 560, 20, WHITE);
+        return UPDATE_CONTINUE;
+    }
+
+    // --- GAME OVER: dibujar y salir ---
     if (gameOver)
     {
         Rectangle src = { 0, 0, (float)texLose.width, (float)texLose.height };
         Rectangle dst = { 0, 0, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT };
         Vector2 origin = { 0, 0 };
-
         DrawTexturePro(texLose, src, dst, origin, 0.0f, WHITE);
         return UPDATE_CONTINUE;
     }
@@ -295,14 +333,14 @@ update_status ModuleGame::PostUpdate()
             if (cbody && cbody->body && !cbody->pendingToDelete)
             {
                 b2Vec2 pos = cbody->body->GetPosition();
-                int x = METERS_TO_PIXELS(pos.x);
-                int y = METERS_TO_PIXELS(pos.y);
+                int cx = METERS_TO_PIXELS(pos.x);
+                int cy = METERS_TO_PIXELS(pos.y);
                 float scale = 0.8f;
                 int drawWidth = (int)(textCollectible.width * scale);
                 int drawHeight = (int)(textCollectible.height * scale);
                 DrawTexturePro(textCollectible,
                     { 0,0,(float)textCollectible.width,(float)textCollectible.height },
-                    { (float)x,(float)y,(float)drawWidth,(float)drawHeight },
+                    { (float)cx,(float)cy,(float)drawWidth,(float)drawHeight },
                     { drawWidth / 2.0f, drawHeight / 2.0f },
                     0.0f, WHITE);
             }
@@ -342,6 +380,7 @@ bool ModuleGame::CleanUp()
 {
     LOG("Cleaning up pinball scene");
     if (texLose.id != 0) UnloadTexture(texLose);
+    if (texMenu.id != 0) UnloadTexture(texMenu);  // NUEVO
     return true;
 }
 
