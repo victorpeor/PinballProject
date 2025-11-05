@@ -6,6 +6,8 @@
 
 class PhysBody;
 
+enum class GameState { MENU, PLAYING, GAMEOVER };
+
 class ModuleGame : public Module
 {
 public:
@@ -20,7 +22,18 @@ public:
     void OnCollision(PhysBody* bodyA, PhysBody* bodyB);
 
 private:
-    // Referencias a los objetos físicos del pinball
+    // --- Estado de juego ---
+    GameState currentState = GameState::MENU;
+    GameState nextState = GameState::MENU;
+
+    // --- Transiciones (fade) ---
+    bool fading = false;
+    bool fadeIn = false;
+    bool fadeOut = false;
+    float fadeAlpha = 0.0f;
+    float fadeSpeed = 0.02f; // Ajusta a gusto
+
+    // --- Referencias físicas del pinball ---
     PhysBody* ball = nullptr;
     PhysBody* leftFlipper = nullptr;
     PhysBody* rightFlipper = nullptr;
@@ -34,29 +47,32 @@ private:
     PhysBody* collectible1 = nullptr;
     PhysBody* collectible2 = nullptr;
     PhysBody* collectible3 = nullptr;
-    // Texturas opcionales para renderizar
+
+    // --- Texturas ---
     Texture2D texBall{};
     Texture2D texSpring{};
     Texture2D texMap{};
     Texture2D texFlipperLeft{};
     Texture2D texFlipperRight{};
     Texture2D textCollectible{};
-
     Texture2D texLife{};
     Texture2D texLose{};
-    bool gameOver = false;
-    Texture2D texMenu{};   
-    bool inMenu = true;    
+    Texture2D texMenu{};
+
+    // --- Flags y datos de juego ---
     int lives = 3;
     bool loseLifePending = false;
     int highScore = 0;
-    // Efectos de sonido, puntuación, etc.
-    unsigned int springsound;
-    unsigned int background_music;
-    unsigned int flipersound;
-    unsigned int ballvoid;
-    unsigned int newball;
+
+    // --- Audio ---
+    unsigned int springsound = 0;
+    unsigned int background_music = 0;
+    unsigned int flipersound = 0;
+    unsigned int ballvoid = 0;
+    unsigned int newball = 0;
     uint bonus_fx = 0;
+
+    // --- Varios ---
     bool debug = false;
     bool resetBall = false;
     bool leftFlipperPressed = false;
@@ -67,9 +83,13 @@ private:
     const int POINTS_COLLECTIBLE = 100;
     const int POINTS_BUMPER_BIG = 50;
     const int POINTS_BUMPER_SMALL = 25;
-
     int score = 0;
 
-    // Función auxiliar para renderizar objetos
-    //void DrawBall();
+    // --- Helpers de estado/transición ---
+    void StartTransitionTo(GameState target);
+    void ApplyStateChangeAtBlack();   // se ejecuta con pantalla a negro (alpha=1)
+    void EnterState(GameState s);     // acciones al entrar en s
+    void DrawMenu();
+    void DrawGame();
+    void DrawGameOver();
 };

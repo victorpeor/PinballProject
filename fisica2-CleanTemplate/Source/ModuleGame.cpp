@@ -11,7 +11,7 @@ ModuleGame::ModuleGame(Application* app, bool start_enabled) : Module(app, start
     ball = nullptr;
     leftFlipper = nullptr;
     rightFlipper = nullptr;
-    // Inicializar sonidos
+
     springsound = 0;
     flipersound = 0;
     ballvoid = 0;
@@ -35,7 +35,7 @@ bool ModuleGame::Start()
     textCollectible = LoadTexture("assets/puntos.png");
     texLife = LoadTexture("assets/Vidas.png");
     texLose = LoadTexture("assets/loose.png");   // pantalla de derrota
-    texMenu = LoadTexture("assets/menu.png");    // NUEVO: pantalla de menú
+    texMenu = LoadTexture("assets/menu.png");    // pantalla de menú
 
     // Sonidos
     springsound = App->audio->LoadFx("assets/springsound.wav");
@@ -44,13 +44,10 @@ bool ModuleGame::Start()
     newball = App->audio->LoadFx("assets/new-ball.wav");
     bonus_fx = App->audio->LoadFx("assets/bonus.wav");
 
-    // Música de fondo
+    // Música de fondo del menú
     App->audio->PlayMusic("assets/background_music.wav");
 
-    // --- IMPORTANTE ---
-    // NO creamos la bola aquí. Se creará al pulsar ENTER desde el menú.
-
-    // Crear palancas y resto de escenario
+    // Crear palancas y resto de escenario (persisten entre estados)
     leftFlipper = App->physics->CreateFlipper(150, 610, texFlipperLeft.width, texFlipperLeft.height, true);
     rightFlipper = App->physics->CreateFlipper(300, 610, texFlipperLeft.width, texFlipperLeft.height, false);
 
@@ -110,152 +107,204 @@ bool ModuleGame::Start()
     App->physics->CreatePolygonWall(bordeInterior4, 12, 6.0f, true);
     App->physics->CreatePolygonWall(bordeInterior5, 12, 6.0f, true);
 
+    // Estado inicial
+    currentState = GameState::MENU;
+    nextState = currentState;
+    fading = false;
+    fadeAlpha = 0.0f;
+
     return true;
+}
+
+void ModuleGame::StartTransitionTo(GameState target)
+{
+    if (fading) return; // ya en transición
+    nextState = target;
+    fadeOut = true;
+    fadeIn = false;
+    fading = true;
+    // si quieres acelerar/ralentizar por transición, ajusta fadeSpeed aquí
+}
+
+void ModuleGame::ApplyStateChangeAtBlack()
+{
+    // Pantalla ya está en negro (alpha==1). Cambiamos estado y ejecutamos EnterState.
+    currentState = nextState;
+    EnterState(currentState);
+
+    // Cambiamos a fade-in
+    fadeOut = false;
+    fadeIn = true;
+}
+
+void ModuleGame::EnterState(GameState s)
+{
+    switch (s)
+    {
+    case GameState::MENU:
+        // Volver a menú: destruir la bola, reiniciar info y música del menú
+        if (ball) { App->physics->DestroyBody(ball); ball = nullptr; }
+        score = 0;
+        lives = 3;
+        resetBall = false;
+        loseLifePending = false;
+        leftFlipperPressed = rightFlipperPressed = springPressed = false;
+        App->audio->PlayMusic("assets/background_music.wav");
+        break;
+
+    case GameState::PLAYING:
+        // Entrar a jugar: crear bola y parar música de menú
+        if (ball) { App->physics->DestroyBody(ball); ball = nullptr; }
+        ball = App->physics->CreateCircle(465, 200, 10);
+        if (ball) ball->listener = this;
+
+        score = 0;
+        lives = 3;
+        loseLifePending = false;
+        resetBall = false;
+        leftFlipperPressed = rightFlipperPressed = springPressed = false;
+
+        App->audio->StopMusic();
+        break;
+
+    case GameState::GAMEOVER:
+        // Entrar a game over: destruir bola y dejar pantalla de derrota
+        if (ball) { App->physics->DestroyBody(ball); ball = nullptr; }
+        break;
+    }
 }
 
 update_status ModuleGame::Update()
 {
-    // --- MENÚ INICIAL ---
-    if (inMenu)
+    // --- INPUT por estado ---
+    if (currentState == GameState::MENU)
     {
-        if (IsKeyPressed(KEY_ENTER))
+        if (IsKeyPressed(KEY_SPACE))
         {
-            // Empezar partida
-            if (ball) { App->physics->DestroyBody(ball); ball = nullptr; }
-            ball = App->physics->CreateCircle(465, 200, 10);
-            ball->listener = this;
-
-            // Reset estado
-            score = 0;
-            lives = 3;
-            loseLifePending = false;
-            resetBall = false;
-            leftFlipperPressed = rightFlipperPressed = springPressed = false;
-
-            inMenu = false;
-
-            
-            App->audio->StopMusic();
-        }
-        return UPDATE_CONTINUE;
-    }
-
-    // --- GAME OVER: solo mostrar pantalla (sin reinicio) ---
-    if (gameOver) {
-        if (IsKeyPressed(KEY_F3))
-        {
-            // Guardar récord antes de resetear
-            if (score > highScore)
-                highScore = score;
-
-            // Destruir cuerpos seguros
-            if (ball) { App->physics->DestroyBody(ball); ball = nullptr; }
-            if (leftFlipper) { App->physics->DestroyBody(leftFlipper); leftFlipper = nullptr; }
-            if (rightFlipper) { App->physics->DestroyBody(rightFlipper); rightFlipper = nullptr; }
-            if (spring) { App->physics->DestroyBody(spring); spring = nullptr; }
-
-            // Volver al menú
-            inMenu = true;
-            gameOver = false;
-            score = 0;
-            lives = 3;
-
-            // Volver a crear los flippers y demás (o podrías reiniciar todo el módulo)
-            leftFlipper = App->physics->CreateFlipper(150, 610, texFlipperLeft.width, texFlipperLeft.height, true);
-            rightFlipper = App->physics->CreateFlipper(300, 610, texFlipperLeft.width, texFlipperLeft.height, false);
-            spring = App->physics->CreateSpring(465, 360, texSpring.width, texSpring.height);
-
-            // Vuelve a sonar la música del menú
-            App->audio->PlayMusic("assets/background_music.wav");
-            return UPDATE_CONTINUE;
+            StartTransitionTo(GameState::PLAYING);
         }
     }
-        
-
-    // Movimiento de flippers
-    float flipperSpeed = 15.0f;
-    if (IsKeyDown(KEY_LEFT))
+    else if (currentState == GameState::GAMEOVER)
     {
-        App->physics->MoveFlipper(leftFlipper, -flipperSpeed);
-        if (!leftFlipperPressed)
+        // Regresar al menú con espacio
+        if (IsKeyPressed(KEY_SPACE))
         {
-            App->audio->PlayFx(flipersound);
-            leftFlipperPressed = true;
+            // Guardar récord antes de cambiar
+            if (score > highScore) highScore = score;
+            StartTransitionTo(GameState::MENU);
         }
     }
-    else
+    else if (currentState == GameState::PLAYING)
     {
-        App->physics->MoveFlipper(leftFlipper, flipperSpeed);
-        leftFlipperPressed = false;
-    }
+        // Movimiento de flippers
+        float flipperSpeed = 15.0f;
 
-    if (IsKeyDown(KEY_RIGHT))
-    {
-        App->physics->MoveFlipper(rightFlipper, flipperSpeed);
-        if (!rightFlipperPressed)
+        if (IsKeyDown(KEY_LEFT))
         {
-            App->audio->PlayFx(flipersound);
-            rightFlipperPressed = true;
-        }
-    }
-    else
-    {
-        App->physics->MoveFlipper(rightFlipper, -flipperSpeed);
-        rightFlipperPressed = false;
-    }
-
-    if (IsKeyDown(KEY_DOWN))
-    {
-        ((b2PrismaticJoint*)spring->joint)->SetMotorSpeed(5.0f);
-        if (!springPressed)
-        {
-            App->audio->PlayFx(springsound);
-            springPressed = true;
-        }
-    }
-    else
-    {
-        ((b2PrismaticJoint*)spring->joint)->SetMotorSpeed(-150.0f);
-        springPressed = false;
-    }
-
-    if (IsKeyPressed(KEY_F1)) debug = !debug;
-    if (IsKeyDown(KEY_F2)) resetBall = true;
-
-    if (ball && ball->body)
-    {
-        float maxSpeed = 15.0f;
-        b2Vec2 vel = ball->body->GetLinearVelocity();
-        float speed = vel.Length();
-        if (speed > maxSpeed)
-        {
-            vel *= maxSpeed / speed;
-            ball->body->SetLinearVelocity(vel);
-        }
-    }
-
-    // Reiniciar la bola si cae fuera
-    if (ball)
-    {
-        int x, y;
-        ball->GetPhysicPosition(x, y);
-        if (y > SCREEN_HEIGHT)
-        {
-            if (lives > 0) lives--;
-
-            if (lives <= 0)
+            App->physics->MoveFlipper(leftFlipper, -flipperSpeed);
+            if (!leftFlipperPressed)
             {
-                gameOver = true;
-                App->physics->DestroyBody(ball);
-                ball = nullptr;
+                App->audio->PlayFx(flipersound);
+                leftFlipperPressed = true;
             }
-            else
+        }
+        else
+        {
+            App->physics->MoveFlipper(leftFlipper, flipperSpeed);
+            leftFlipperPressed = false;
+        }
+
+        if (IsKeyDown(KEY_RIGHT))
+        {
+            App->physics->MoveFlipper(rightFlipper, flipperSpeed);
+            if (!rightFlipperPressed)
             {
-                App->physics->DestroyBody(ball);
-                App->audio->PlayFx(ballvoid);
-                ball = App->physics->CreateCircle(400, 200, 10);
-                App->audio->PlayFx(newball);
-                ball->listener = this;
+                App->audio->PlayFx(flipersound);
+                rightFlipperPressed = true;
+            }
+        }
+        else
+        {
+            App->physics->MoveFlipper(rightFlipper, -flipperSpeed);
+            rightFlipperPressed = false;
+        }
+
+        if (IsKeyDown(KEY_DOWN))
+        {
+            ((b2PrismaticJoint*)spring->joint)->SetMotorSpeed(5.0f);
+            if (!springPressed)
+            {
+                App->audio->PlayFx(springsound);
+                springPressed = true;
+            }
+        }
+        else
+        {
+            ((b2PrismaticJoint*)spring->joint)->SetMotorSpeed(-150.0f);
+            springPressed = false;
+        }
+
+        if (IsKeyPressed(KEY_F1)) debug = !debug;
+        if (IsKeyDown(KEY_F2)) resetBall = true;
+
+        if (ball && ball->body)
+        {
+            float maxSpeed = 15.0f;
+            b2Vec2 vel = ball->body->GetLinearVelocity();
+            float speed = vel.Length();
+            if (speed > maxSpeed)
+            {
+                vel *= maxSpeed / speed;
+                ball->body->SetLinearVelocity(vel);
+            }
+        }
+
+        // Reiniciar o perder vida si cae fuera
+        if (ball)
+        {
+            int x, y;
+            ball->GetPhysicPosition(x, y);
+            if (y > SCREEN_HEIGHT)
+            {
+                if (lives > 0) lives--;
+
+                if (lives <= 0)
+                {
+                    // Transición a GAMEOVER
+                    StartTransitionTo(GameState::GAMEOVER);
+                }
+                else
+                {
+                    App->physics->DestroyBody(ball);
+                    App->audio->PlayFx(ballvoid);
+                    ball = App->physics->CreateCircle(400, 200, 10);
+                    App->audio->PlayFx(newball);
+                    if (ball) ball->listener = this;
+                }
+            }
+        }
+    }
+
+    // --- Gestión del fade (se evalúa siempre) ---
+    if (fading)
+    {
+        if (fadeOut)
+        {
+            fadeAlpha += fadeSpeed;
+            if (fadeAlpha >= 1.0f)
+            {
+                fadeAlpha = 1.0f;
+                ApplyStateChangeAtBlack(); // cambia de estado con pantalla negra
+            }
+        }
+        else if (fadeIn)
+        {
+            fadeAlpha -= fadeSpeed;
+            if (fadeAlpha <= 0.0f)
+            {
+                fadeAlpha = 0.0f;
+                fadeIn = false;
+                fading = false;
             }
         }
     }
@@ -263,31 +312,17 @@ update_status ModuleGame::Update()
     return UPDATE_CONTINUE;
 }
 
-update_status ModuleGame::PostUpdate()
+void ModuleGame::DrawMenu()
 {
-    // --- MENÚ INICIAL: dibujar y salir ---
-    if (inMenu)
-    {
-        Rectangle src = { 0, 0, (float)texMenu.width, (float)texMenu.height };
-        Rectangle dst = { 0, 0, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT };
-        Vector2 origin = { 0, 0 };
-        DrawTexturePro(texMenu, src, dst, origin, 0.0f, WHITE);
+    Rectangle src = { 0, 0, (float)texMenu.width, (float)texMenu.height };
+    Rectangle dst = { 0, 0, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT };
+    Vector2 origin = { 0, 0 };
+    DrawTexturePro(texMenu, src, dst, origin, 0.0f, WHITE);
+    // Opcional: DrawText("Pulsa ENTER para empezar", 70, 560, 20, WHITE);
+}
 
-        // (Opcional) texto ayuda
-        // DrawText("Pulsa ENTER para empezar", 70, 560, 20, WHITE);
-        return UPDATE_CONTINUE;
-    }
-
-    // --- GAME OVER: dibujar y salir ---
-    if (gameOver)
-    {
-        Rectangle src = { 0, 0, (float)texLose.width, (float)texLose.height };
-        Rectangle dst = { 0, 0, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT };
-        Vector2 origin = { 0, 0 };
-        DrawTexturePro(texLose, src, dst, origin, 0.0f, WHITE);
-        return UPDATE_CONTINUE;
-    }
-
+void ModuleGame::DrawGame()
+{
     if (resetBall)
     {
         resetBall = false;
@@ -306,8 +341,7 @@ update_status ModuleGame::PostUpdate()
 
         if (lives <= 0)
         {
-            gameOver = true;
-            if (ball) { App->physics->DestroyBody(ball); ball = nullptr; }
+            StartTransitionTo(GameState::GAMEOVER);
         }
         else
         {
@@ -315,9 +349,10 @@ update_status ModuleGame::PostUpdate()
         }
     }
 
-    // --- Mapa y bola ---
+    // Mapa
     DrawTexture(texMap, 0, 0, WHITE);
 
+    // Bola
     if (ball)
     {
         int bx, by;
@@ -325,7 +360,7 @@ update_status ModuleGame::PostUpdate()
         DrawTexture(texBall, bx - texBall.width / 2, by - texBall.height / 2, WHITE);
     }
 
-    // --- Flipper izquierdo ---
+    // Flipper izquierdo
     int x, y;
     leftFlipper->GetPhysicPosition(x, y);
     float angleLeft = leftFlipper->GetRotation() * RAD2DEG;
@@ -337,7 +372,7 @@ update_status ModuleGame::PostUpdate()
         { 0, 0, (float)texFlipperLeft.width, (float)texFlipperLeft.height },
         destLeft, pivotLeft, angleLeft, WHITE);
 
-    // --- Flipper derecho ---
+    // Flipper derecho
     rightFlipper->GetPhysicPosition(x, y);
     float angleRight = rightFlipper->GetRotation() * RAD2DEG;
     float wR = (float)rightFlipper->width;
@@ -348,7 +383,7 @@ update_status ModuleGame::PostUpdate()
         { 0, 0, (float)texFlipperRight.width, (float)texFlipperRight.height },
         destRight, pivotRight, angleRight, WHITE);
 
-    // --- Spring ---
+    // Spring
     int sx, sy;
     spring->GetPhysicPosition(sx, sy);
     float w = (float)texSpring.width;
@@ -357,7 +392,7 @@ update_status ModuleGame::PostUpdate()
     Rectangle dest = { (float)sx, (float)sy, w, h };
     DrawTexturePro(texSpring, { 0, 0, w, h }, dest, pivot, 0.0f, WHITE);
 
-    // --- Dibujar collectibles ---
+    // Collectibles
     auto drawCollectible = [&](PhysBody* cbody)
         {
             if (cbody && cbody->body && !cbody->pendingToDelete)
@@ -382,9 +417,10 @@ update_status ModuleGame::PostUpdate()
 
     if (debug) App->physics->DrawDebug(App->renderer);
 
-    // --- Score y vidas ---
+    // Score y vidas
     DrawText(TextFormat("SCORE: %d", score), 20, 20, 30, WHITE);
     DrawText(TextFormat("HIGH SCORE: %d", highScore), 20, 50, 25, WHITE);
+
     if (texLife.id != 0 && lives > 0)
     {
         const int baseX = 20;
@@ -402,6 +438,37 @@ update_status ModuleGame::PostUpdate()
             DrawTexturePro(texLife, src, dst, origin, 0.0f, WHITE);
         }
     }
+}
+
+void ModuleGame::DrawGameOver()
+{
+    Rectangle src = { 0, 0, (float)texLose.width, (float)texLose.height };
+    Rectangle dst = { 0, 0, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT };
+    Vector2 origin = { 0, 0 };
+    DrawTexturePro(texLose, src, dst, origin, 0.0f, WHITE);
+}
+
+update_status ModuleGame::PostUpdate()
+{
+    // Dibujo por estado
+    switch (currentState)
+    {
+    case GameState::MENU:
+        DrawMenu();
+        break;
+    case GameState::PLAYING:
+        DrawGame();
+        break;
+    case GameState::GAMEOVER:
+        DrawGameOver();
+        break;
+    }
+
+    // Overlay de fade si procede
+    if (fading)
+    {
+        DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, Fade(BLACK, fadeAlpha));
+    }
 
     return UPDATE_CONTINUE;
 }
@@ -409,8 +476,18 @@ update_status ModuleGame::PostUpdate()
 bool ModuleGame::CleanUp()
 {
     LOG("Cleaning up pinball scene");
+
+    // Texturas (descarga segura si fueron cargadas)
     if (texLose.id != 0) UnloadTexture(texLose);
-    if (texMenu.id != 0) UnloadTexture(texMenu);  // NUEVO
+    if (texMenu.id != 0) UnloadTexture(texMenu);
+    if (texBall.id != 0) UnloadTexture(texBall);
+    if (texMap.id != 0) UnloadTexture(texMap);
+    if (texFlipperLeft.id != 0) UnloadTexture(texFlipperLeft);
+    if (texFlipperRight.id != 0) UnloadTexture(texFlipperRight);
+    if (texSpring.id != 0) UnloadTexture(texSpring);
+    if (textCollectible.id != 0) UnloadTexture(textCollectible);
+    if (texLife.id != 0) UnloadTexture(texLife);
+
     return true;
 }
 
