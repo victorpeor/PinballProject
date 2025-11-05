@@ -44,6 +44,7 @@ private:
 
     Texture2D texLife{};
     int lives = 3;
+    bool loseLifePending = false;
 
     // Efectos de sonido, puntuación, etc.
     unsigned int springsound;

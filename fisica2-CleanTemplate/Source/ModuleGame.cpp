@@ -266,6 +266,9 @@ update_status ModuleGame::Update()
     ball->GetPhysicPosition(x, y);
     if (y > SCREEN_HEIGHT)
     {
+        //Perder una vida al drenar
+        if (lives > 0) lives--;
+
         //Sonido cuando bola cae al vacio
         App->physics->DestroyBody(ball);
         ball->listener = this;
@@ -286,6 +289,13 @@ update_status ModuleGame::PostUpdate()
         ball->body->SetTransform(b2Vec2(PIXEL_TO_METERS(465), PIXEL_TO_METERS(200)), 0);
         ball->body->SetLinearVelocity(b2Vec2(0, 0));
         ball->body->SetAngularVelocity(0);
+    }
+    
+    if (loseLifePending)
+    {
+        if (lives > 0) lives--;           // resta una vida
+        loseLifePending = false;          // evita repetir
+        App->audio->PlayFx(newball);      // sonido de bola nueva
     }
 
     // --- Mapa y bola ---
@@ -505,9 +515,15 @@ void ModuleGame::OnCollision(PhysBody* bodyA, PhysBody* bodyB)
     // Reset si entra en la zona de reinicio
     if ((bodyA == ball && bodyB == resetZone) || (bodyB == ball && bodyA == resetZone))
     {
-        resetBall = true;
+        if (!resetBall)            // evita múltiples triggers del sensor en frames consecutivos
+        {
+            resetBall = true;       // reposicionar en PostUpdate
+            loseLifePending = true; // marcar que hay que restar 1 vida
+            App->audio->PlayFx(ballvoid); // sonido de caída
+        }
         return;
     }
+
 
     // --- BUMPERS ---
     if ((bodyA == ball && bodyB == bumper) || (bodyB == ball && bodyA == bumper))
