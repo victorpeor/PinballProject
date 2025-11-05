@@ -35,7 +35,7 @@ bool ModuleGame::Start()
     flipersound = App->audio->LoadFx("assets/flipper.wav");
     ballvoid = App->audio->LoadFx("assets/ball_void.wav");
     newball = App->audio->LoadFx("assets/new-ball.wav");
-    bonus_fx = App->audio->LoadFx("assets/bonus.wav");
+  /*  bonus_fx = App->audio->LoadFx("assets/bonus.wav");*/
 
     //Inicializamos la musica de fondo
     App->audio->PlayFx(background_music);
