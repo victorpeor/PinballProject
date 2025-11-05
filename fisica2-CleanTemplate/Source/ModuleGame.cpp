@@ -419,12 +419,17 @@ void ModuleGame::DrawGame()
 
     // Score y vidas
     DrawText(TextFormat("SCORE: %d", score), 20, 20, 30, WHITE);
-    DrawText(TextFormat("HIGH SCORE: %d", highScore), 20, 50, 25, WHITE);
+
+    const int hsY = 50;
+    const int hsFont = 25;
+    DrawText(TextFormat("HIGH SCORE: %d", highScore), 20, hsY, hsFont, WHITE);
 
     if (texLife.id != 0 && lives > 0)
     {
         const int baseX = 20;
-        const int baseY = 56;
+        const int padding = 6;                     // separación vertical
+        const int baseY = hsY + hsFont + padding;  // ⟵ vidas debajo del high score
+
         const float iconH = 26.0f;
         const float scale = iconH / (float)texLife.height;
         const float iconW = texLife.width * scale;
@@ -438,6 +443,7 @@ void ModuleGame::DrawGame()
             DrawTexturePro(texLife, src, dst, origin, 0.0f, WHITE);
         }
     }
+
 }
 
 void ModuleGame::DrawGameOver()
