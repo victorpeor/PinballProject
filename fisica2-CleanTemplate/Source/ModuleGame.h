@@ -43,6 +43,8 @@ private:
     Texture2D textCollectible{};
 
     Texture2D texLife{};
+    Texture2D texLose{};
+    bool gameOver = false;
     int lives = 3;
     bool loseLifePending = false;
 
