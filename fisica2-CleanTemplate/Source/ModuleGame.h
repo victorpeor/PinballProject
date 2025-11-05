@@ -49,7 +49,7 @@ private:
     bool inMenu = true;    
     int lives = 3;
     bool loseLifePending = false;
-
+    int highScore = 0;
     // Efectos de sonido, puntuación, etc.
     unsigned int springsound;
     unsigned int background_music;

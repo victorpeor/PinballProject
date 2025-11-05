@@ -120,12 +120,12 @@ update_status ModuleGame::Update()
     {
         if (IsKeyPressed(KEY_ENTER))
         {
-            // Empezar partida: crear la bola ahora
+            // Empezar partida
             if (ball) { App->physics->DestroyBody(ball); ball = nullptr; }
             ball = App->physics->CreateCircle(465, 200, 10);
             ball->listener = this;
 
-            // Reset estado de partida por si venimos de un run previo
+            // Reset estado
             score = 0;
             lives = 3;
             loseLifePending = false;
@@ -133,14 +133,44 @@ update_status ModuleGame::Update()
             leftFlipperPressed = rightFlipperPressed = springPressed = false;
 
             inMenu = false;
+
+            
+            App->audio->StopMusic();
         }
-        // No procesar lógica de juego mientras estamos en menú
         return UPDATE_CONTINUE;
     }
 
     // --- GAME OVER: solo mostrar pantalla (sin reinicio) ---
-    if (gameOver)
-        return UPDATE_CONTINUE;
+    if (gameOver) {
+        if (IsKeyPressed(KEY_F3))
+        {
+            // Guardar récord antes de resetear
+            if (score > highScore)
+                highScore = score;
+
+            // Destruir cuerpos seguros
+            if (ball) { App->physics->DestroyBody(ball); ball = nullptr; }
+            if (leftFlipper) { App->physics->DestroyBody(leftFlipper); leftFlipper = nullptr; }
+            if (rightFlipper) { App->physics->DestroyBody(rightFlipper); rightFlipper = nullptr; }
+            if (spring) { App->physics->DestroyBody(spring); spring = nullptr; }
+
+            // Volver al menú
+            inMenu = true;
+            gameOver = false;
+            score = 0;
+            lives = 3;
+
+            // Volver a crear los flippers y demás (o podrías reiniciar todo el módulo)
+            leftFlipper = App->physics->CreateFlipper(150, 610, texFlipperLeft.width, texFlipperLeft.height, true);
+            rightFlipper = App->physics->CreateFlipper(300, 610, texFlipperLeft.width, texFlipperLeft.height, false);
+            spring = App->physics->CreateSpring(465, 360, texSpring.width, texSpring.height);
+
+            // Vuelve a sonar la música del menú
+            App->audio->PlayMusic("assets/background_music.wav");
+            return UPDATE_CONTINUE;
+        }
+    }
+        
 
     // Movimiento de flippers
     float flipperSpeed = 15.0f;
@@ -354,7 +384,7 @@ update_status ModuleGame::PostUpdate()
 
     // --- Score y vidas ---
     DrawText(TextFormat("SCORE: %d", score), 20, 20, 30, WHITE);
-
+    DrawText(TextFormat("HIGH SCORE: %d", highScore), 20, 50, 25, WHITE);
     if (texLife.id != 0 && lives > 0)
     {
         const int baseX = 20;
