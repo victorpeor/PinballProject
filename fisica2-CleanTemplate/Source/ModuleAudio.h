@@ -1,32 +1,31 @@
 #pragma once
-
 #include "Module.h"
 
-#define MAX_SOUNDS	16
-#define DEFAULT_MUSIC_FADE_TIME 2.0f
+// Forward declaration de tipos de raylib
+typedef struct Music Music;
+typedef struct Sound Sound;
 
 class ModuleAudio : public Module
 {
 public:
+    ModuleAudio(Application* app, bool start_enabled = true);
+    ~ModuleAudio();
 
-	ModuleAudio(Application* app, bool start_enabled = true);
-	~ModuleAudio();
+    bool Init();
+    update_status Update();
+    bool CleanUp();
 
-	bool Init();
-	bool CleanUp();
+    // Efectos de sonido
+    unsigned int LoadFx(const char* path);
+    void PlayFx(unsigned int fx_id);
 
-	// Play a music file
-	bool PlayMusic(const char* path, float fade_time = DEFAULT_MUSIC_FADE_TIME);
-
-	// Load a sound in memory
-	unsigned int LoadFx(const char* path);
-
-	// Play a previously loaded sound
-	bool PlayFx(unsigned int fx, int repeat = 0);
+    // Música
+    void PlayMusic(const char* path);
+    void StopMusic();
 
 private:
-
-	Music music;
-	Sound fx[MAX_SOUNDS];
-    unsigned int fx_count;
+    Sound* sounds;
+    Music* music;
+    int fx_count;
+    int max_fx;
 };

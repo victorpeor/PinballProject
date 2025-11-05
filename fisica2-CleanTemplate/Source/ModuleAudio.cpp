@@ -1,109 +1,98 @@
 #include "Globals.h"
 #include "Application.h"
 #include "ModuleAudio.h"
-
 #include "raylib.h"
 
-#define MAX_FX_SOUNDS   64
+#define MAX_FX 20
 
 ModuleAudio::ModuleAudio(Application* app, bool start_enabled) : Module(app, start_enabled)
 {
-	fx_count = 0;
-	music = Music{ 0 };
+    max_fx = MAX_FX;
+    sounds = new Sound[MAX_FX];
+    music = nullptr;
+    fx_count = 0;
 }
 
-// Destructor
 ModuleAudio::~ModuleAudio()
-{}
+{
+    delete[] sounds;
+}
 
-// Called before render is available
 bool ModuleAudio::Init()
 {
-	LOG("Loading Audio Mixer");
-	bool ret = true;
-
-    LOG("Loading raylib audio system");
-
+    LOG("Initializing Audio System");
     InitAudioDevice();
-
-	return ret;
+    return true;
 }
 
-// Called before quitting
+update_status ModuleAudio::Update()
+{
+    if (music != nullptr) {
+        UpdateMusicStream(*music);
+    }
+    return UPDATE_CONTINUE;
+}
+
 bool ModuleAudio::CleanUp()
 {
-	LOG("Freeing sound FX, closing Mixer and Audio subsystem");
+    LOG("Freeing audio system");
 
-    // Unload sounds
-	for (unsigned int i = 0; i < fx_count; i++)
-	{
-		UnloadSound(fx[i]);
-	}
+    // Liberar música
+    if (music != nullptr) {
+        StopMusicStream(*music);
+        UnloadMusicStream(*music);
+        delete music;
+        music = nullptr;
+    }
 
-    // Unload music
-	if (IsMusicReady(music))
-	{
-		StopMusicStream(music);
-		UnloadMusicStream(music);
-	}
+    // Liberar efectos de sonido
+    for (int i = 0; i < fx_count; i++) {
+        UnloadSound(sounds[i]);
+    }
+    fx_count = 0;
 
     CloseAudioDevice();
-
-	return true;
+    return true;
 }
 
-// Play a music file
-bool ModuleAudio::PlayMusic(const char* path, float fade_time)
-{
-	if(IsEnabled() == false)
-		return false;
-
-	bool ret = true;
-	
-    StopMusicStream(music);
-    music = LoadMusicStream(path);
-    
-    PlayMusicStream(music);
-
-	LOG("Successfully playing %s", path);
-
-	return ret;
-}
-
-// Load WAV
 unsigned int ModuleAudio::LoadFx(const char* path)
 {
-	if(IsEnabled() == false)
-		return 0;
-
-	unsigned int ret = 0;
-
-	Sound sound = LoadSound(path);
-
-	if(sound.stream.buffer == NULL)
-	{
-		LOG("Cannot load sound: %s", path);
-	}
-	else
-	{
-        fx[fx_count++] = sound;
-		ret = fx_count;
-	}
-
-	return ret;
+    if (fx_count < max_fx) {
+        sounds[fx_count] = LoadSound(path);
+        if (sounds[fx_count].frameCount > 0) {
+            fx_count++;
+            return fx_count; // Retorna el ID (1-based)
+        }
+    }
+    return 0;
 }
 
-// Play WAV
-bool ModuleAudio::PlayFx(unsigned int id, int repeat)
+void ModuleAudio::PlayFx(unsigned int fx_id)
 {
-	if (IsEnabled() == false)
-	{
-		return false;
-	}
+    if (fx_id > 0 && fx_id <= fx_count) {
+        PlaySound(sounds[fx_id - 1]);
+    }
+}
 
-	bool ret = false;
+void ModuleAudio::PlayMusic(const char* path)
+{
+    // Detener música anterior
+    if (music != nullptr) {
+        StopMusicStream(*music);
+        UnloadMusicStream(*music);
+        delete music;
+    }
 
-	if(id < fx_count) PlaySound(fx[id]);
+    // Cargar nueva música
+    music = new Music(LoadMusicStream(path));
+    if (music->frameCount > 0) {
+        PlayMusicStream(*music);
+    }
+}
 
-	return ret;
+void ModuleAudio::StopMusic()
+{
+    if (music != nullptr) {
+        StopMusicStream(*music);
+    }
 }

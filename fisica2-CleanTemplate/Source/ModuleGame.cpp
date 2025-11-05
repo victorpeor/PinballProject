@@ -4,6 +4,7 @@
 #include "ModulePhysics.h"
 #include "ModuleAudio.h"
 #include "ModuleGame.h"
+#include "raylib.h"
 
 ModuleGame::ModuleGame(Application* app, bool start_enabled) : Module(app, start_enabled)
 {
@@ -12,10 +13,11 @@ ModuleGame::ModuleGame(Application* app, bool start_enabled) : Module(app, start
     rightFlipper = nullptr;
     //Inicializar sonidos
     springsound = 0;
-    background_music = 0;
     flipersound = 0;
     ballvoid = 0;
     newball = 0;
+    bonus_fx = 0;
+    background_music = { 0 };
 }
 
 ModuleGame::~ModuleGame() {}
@@ -30,15 +32,16 @@ bool ModuleGame::Start()
     texFlipperRight = LoadTexture("assets/palanca.png");
     texSpring = LoadTexture("assets/Spring.png");
     textCollectible = LoadTexture("assets/puntos.png");
+    //Cargar efectos de sonido
     springsound = App->audio->LoadFx("assets/springsound.wav");
-    background_music = App->audio->LoadFx("assets/background_music.wav");
     flipersound = App->audio->LoadFx("assets/flipper.wav");
     ballvoid = App->audio->LoadFx("assets/ball_void.wav");
     newball = App->audio->LoadFx("assets/new-ball.wav");
-  /*  bonus_fx = App->audio->LoadFx("assets/bonus.wav");*/
+    /*bonus_fx = App->audio->LoadFx("assets/bonus.wav");*/
 
     //Inicializamos la musica de fondo
-    App->audio->PlayFx(background_music);
+    App->audio->PlayMusic("assets/background_music.wav");
+
 
     // Crear la bola 
     ball = App->physics->CreateCircle(465, 200, 10);
@@ -261,11 +264,14 @@ update_status ModuleGame::Update()
     ball->GetPhysicPosition(x, y);
     if (y > SCREEN_HEIGHT)
     {
-        App->audio->PlayFx(ballvoid);//Sonido cuando bola cae al vacio
+        //Sonido cuando bola cae al vacio
         App->physics->DestroyBody(ball);
-        ball = App->physics->CreateCircle(400, 200, 10);
         ball->listener = this;
+        App->audio->PlayFx(ballvoid);
+        ball = App->physics->CreateCircle(400, 200, 10);
         App->audio->PlayFx(newball);
+        ball->listener = this;
+      
     }
 
     return UPDATE_CONTINUE;
