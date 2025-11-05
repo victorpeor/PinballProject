@@ -36,7 +36,9 @@ private:
     // --- Referencias físicas del pinball ---
     PhysBody* ball = nullptr;
     PhysBody* leftFlipper = nullptr;
+    PhysBody* leftFlipper2 = nullptr;
     PhysBody* rightFlipper = nullptr;
+    PhysBody* rightFlipper2 = nullptr;
     PhysBody* spring = nullptr;
     PhysBody* resetZone = nullptr;
     PhysBody* bumper = nullptr;
@@ -83,6 +85,7 @@ private:
     const int POINTS_COLLECTIBLE = 100;
     const int POINTS_BUMPER_BIG = 50;
     const int POINTS_BUMPER_SMALL = 25;
+    int collectible_left = 3;
     int score = 0;
 
     // --- Helpers de estado/transición ---

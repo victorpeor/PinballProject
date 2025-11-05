@@ -36,19 +36,34 @@ bool ModulePhysics::Start()
 
 update_status ModulePhysics::PreUpdate()
 {
-	world->Step(1.0f / 60.0f, 8, 3);
+	// --- Fixed timestep setup ---
+	static float accumulator = 0.0f;
+	const float fixedTimeStep = 1.0f / 60.0f; // 60Hz físicas estables
 
+	// Raylib te da el tiempo real entre frames
+	float deltaTime = GetFrameTime();
+	accumulator += deltaTime;
+
+	// --- Step de física fijo ---
+	while (accumulator >= fixedTimeStep)
+	{
+		world->Step(fixedTimeStep, 8, 3);
+		accumulator -= fixedTimeStep;
+	}
+
+	// --- Colisiones tipo sensor ---
 	for (b2Contact* c = world->GetContactList(); c; c = c->GetNext())
 	{
 		if (c->GetFixtureA()->IsSensor() && c->IsTouching())
 		{
-			b2BodyUserData data1 = c->GetFixtureA()->GetBody()->GetUserData();
-			b2BodyUserData data2 = c->GetFixtureA()->GetBody()->GetUserData();
+			b2BodyUserData dataA = c->GetFixtureA()->GetBody()->GetUserData();
+			b2BodyUserData dataB = c->GetFixtureB()->GetBody()->GetUserData();
 
-			PhysBody* pb1 = (PhysBody*)data1.pointer;
-			PhysBody* pb2 = (PhysBody*)data2.pointer;
-			if (pb1 && pb2 && pb1->listener)
-				pb1->listener->OnCollision(pb1, pb2);
+			PhysBody* pbA = (PhysBody*)dataA.pointer;
+			PhysBody* pbB = (PhysBody*)dataB.pointer;
+
+			if (pbA && pbB && pbA->listener)
+				pbA->listener->OnCollision(pbA, pbB);
 		}
 	}
 
@@ -266,7 +281,7 @@ update_status ModulePhysics::PostUpdate()
 			// TODO 1: If mouse button 1 is pressed ...
 			// test if the current body contains mouse position
 			if (mouse_joint == nullptr && mouseSelect == nullptr && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-				printf("Mouse click: world coords = (%f, %f)\n", mousePosition.x, mousePosition.y);
+				//printf("Mouse click: world coords = (%f, %f)\n", mousePosition.x, mousePosition.y);
 				if (f->TestPoint(pMousePosition)) {
 					mouseSelect = b;
 				}

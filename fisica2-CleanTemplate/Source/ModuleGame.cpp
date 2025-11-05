@@ -50,10 +50,12 @@ bool ModuleGame::Start()
     // Crear palancas y resto de escenario (persisten entre estados)
     leftFlipper = App->physics->CreateFlipper(150, 610, texFlipperLeft.width, texFlipperLeft.height, true);
     rightFlipper = App->physics->CreateFlipper(300, 610, texFlipperLeft.width, texFlipperLeft.height, false);
+    leftFlipper2 = App->physics->CreateFlipper(150, 295, texFlipperLeft.width, texFlipperLeft.height, true);
+    rightFlipper2 = App->physics->CreateFlipper(300, 295, texFlipperLeft.width, texFlipperLeft.height, false);
 
-    bumper = App->physics->CreateBumper(235, 64, 25, 1.5f);
-    bumper2 = App->physics->CreateBumper(168, 170, 7, 1.5f);
-    bumper3 = App->physics->CreateBumper(296, 170, 7, 1.5f);
+    bumper = App->physics->CreateBumper(235, 64, 20, 1.5f);
+    bumper2 = App->physics->CreateBumper(168, 170, 10, 1.5f);
+    bumper3 = App->physics->CreateBumper(296, 170, 10, 1.5f);
 
     spring = App->physics->CreateSpring(465, 360, texSpring.width, texSpring.height);
     resetZone = App->physics->CreateRectangleSensor(230, 635, 250, 5);
@@ -71,16 +73,25 @@ bool ModuleGame::Start()
 
     const int bordeExterior[] = {
         428, 7, 104, 7, 64, 40, 44, 88, 31, 150, 31, 164,
-        16, 189, 19, 321, 25, 340, 49, 370, 52, 433, 32, 458,
-        32, 601, 93, 640, 354, 640, 415, 600, 415, 469, 400, 454,
-        400, 421, 420, 399, 428, 368, 429, 88, 417, 71, 407, 69,
+        16, 195, 19, 321, 25, 340, 49, 370, 52, 433, 32, 458,
+        32, 601, 93, 650, 354, 650, 415, 600, 415, 469, 400, 454,
+        400, 428, 420, 399, 428, 368, 429, 88, 417, 71, 407, 69,
         361, 94, 355, 87, 394, 52, 419, 54, 434, 65, 448, 90,
         448, 477, 479, 477, 479, 71, 466, 37, 446, 13,
     };
 
     const int bordeInterior1[] = {
-        393, 342, 393, 148, 374, 148, 372, 228, 364, 251,
-        344, 267, 318, 275, 296, 275, 313, 286, 298, 298, 376, 352
+        393, 342, 
+        393, 148, 
+        374, 148, 
+        372, 228, 
+        364, 251,
+        344, 267, 
+        318, 275, 
+        306, 286, 
+        326, 290, //m
+        298, 316, 
+        376, 352
     };
 
     const int bordeInterior2[] = {
@@ -88,23 +99,33 @@ bool ModuleGame::Start()
     };
 
     const int bordeInterior3[] = {
-        81,192,66,227,67,295,73,319,106,345,142,309,
-        159,302,145,295,143,278,156,271,121,259,97,228
+        81,209,   // antes 192
+    66,244,   // antes 227
+    67,312,   // antes 295
+    73,336,   // antes 319
+    106,362,  // antes 345
+    142,326,  // antes 309
+    159,319,  // antes 302
+    145,312,  // antes 295
+    143,295,  // antes 278
+    150,288,  // antes 271
+    121,276,  // antes 259
+    97,245
     };
 
     const int bordeInterior4[] = {
-        77,480,77,577,141,613,149,599,93,568,90,480
+        77,520,77,577,141,613,149,599,93,568,90,520
     };
 
     const int bordeInterior5[] = {
-        369,480,369,577,304,613,297,599,356,568,356,480
+        369,520,369,577,304,613,297,599,356,568,356,520
     };
 
     App->physics->CreatePolygonWall(bordeExterior, 68, 6.0f, true);
     App->physics->CreatePolygonWall(bordeInterior1, 22, 6.0f, true);
-    App->physics->CreatePolygonWall(bordeInterior2, 14, 6.0f, true);
-    App->physics->CreatePolygonWall(bordeInterior3, 24, 6.0f, true);
-    App->physics->CreatePolygonWall(bordeInterior4, 12, 6.0f, true);
+    App->physics->CreatePolygonWall(bordeInterior2, 14, 6.0f, true); //Izquierda arriba
+    App->physics->CreatePolygonWall(bordeInterior3, 24, 6.0f, true); //Izquierda abajo
+    App->physics->CreatePolygonWall(bordeInterior4, 12, 6.0f, true); //Abajo
     App->physics->CreatePolygonWall(bordeInterior5, 12, 6.0f, true);
 
     // Estado inicial
@@ -139,6 +160,7 @@ void ModuleGame::ApplyStateChangeAtBlack()
 
 void ModuleGame::EnterState(GameState s)
 {
+
     switch (s)
     {
     case GameState::MENU:
@@ -153,18 +175,43 @@ void ModuleGame::EnterState(GameState s)
         break;
 
     case GameState::PLAYING:
-        // Entrar a jugar: crear bola y parar música de menú
-        if (ball) { App->physics->DestroyBody(ball); ball = nullptr; }
+        //Entrar al Game
+        if (ball)
+        {
+            App->physics->DestroyBody(ball);
+            ball = nullptr;
+        }
+
         ball = App->physics->CreateCircle(465, 200, 10);
         if (ball) ball->listener = this;
 
         score = 0;
         lives = 3;
+        collectible_left = 3;
         loseLifePending = false;
         resetBall = false;
         leftFlipperPressed = rightFlipperPressed = springPressed = false;
 
-        App->audio->StopMusic();
+        
+        {
+            auto safeDestroy = [&](PhysBody*& p)
+            {
+                if (p != nullptr)
+                {
+                    if (!p->pendingToDelete)
+                        App->physics->DestroyBody(p);
+                    p = nullptr;
+                }
+            };
+
+            safeDestroy(collectible1);
+            safeDestroy(collectible2);
+            safeDestroy(collectible3);
+
+            collectible1 = App->physics->CreateCollectible(68, 62, 10);
+            collectible2 = App->physics->CreateCollectible(398, 111, 8);
+            collectible3 = App->physics->CreateCollectible(224, 287, 12);
+        }
         break;
 
     case GameState::GAMEOVER:
@@ -202,6 +249,8 @@ update_status ModuleGame::Update()
         if (IsKeyDown(KEY_LEFT))
         {
             App->physics->MoveFlipper(leftFlipper, -flipperSpeed);
+            App->physics->MoveFlipper(leftFlipper2, -flipperSpeed);
+
             if (!leftFlipperPressed)
             {
                 App->audio->PlayFx(flipersound);
@@ -211,12 +260,16 @@ update_status ModuleGame::Update()
         else
         {
             App->physics->MoveFlipper(leftFlipper, flipperSpeed);
+            App->physics->MoveFlipper(leftFlipper2, flipperSpeed);
             leftFlipperPressed = false;
         }
 
+        // --- Flippers derechos (ambos) ---
         if (IsKeyDown(KEY_RIGHT))
         {
             App->physics->MoveFlipper(rightFlipper, flipperSpeed);
+            App->physics->MoveFlipper(rightFlipper2, flipperSpeed);
+
             if (!rightFlipperPressed)
             {
                 App->audio->PlayFx(flipersound);
@@ -226,6 +279,7 @@ update_status ModuleGame::Update()
         else
         {
             App->physics->MoveFlipper(rightFlipper, -flipperSpeed);
+            App->physics->MoveFlipper(rightFlipper2, -flipperSpeed);
             rightFlipperPressed = false;
         }
 
@@ -318,7 +372,7 @@ void ModuleGame::DrawMenu()
     Rectangle dst = { 0, 0, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT };
     Vector2 origin = { 0, 0 };
     DrawTexturePro(texMenu, src, dst, origin, 0.0f, WHITE);
-    // Opcional: DrawText("Pulsa ENTER para empezar", 70, 560, 20, WHITE);
+    
 }
 
 void ModuleGame::DrawGame()
@@ -360,28 +414,34 @@ void ModuleGame::DrawGame()
         DrawTexture(texBall, bx - texBall.width / 2, by - texBall.height / 2, WHITE);
     }
 
-    // Flipper izquierdo
+    //  Flipper inferior izquierdo 
     int x, y;
     leftFlipper->GetPhysicPosition(x, y);
     float angleLeft = leftFlipper->GetRotation() * RAD2DEG;
-    float wL = (float)leftFlipper->width;
-    float hL = (float)leftFlipper->height;
-    Vector2 pivotLeft = { wL / 2, hL / 2 };
-    Rectangle destLeft = { (float)x, (float)y, wL, hL };
-    DrawTexturePro(texFlipperLeft,
-        { 0, 0, (float)texFlipperLeft.width, (float)texFlipperLeft.height },
-        destLeft, pivotLeft, angleLeft, WHITE);
+    Vector2 pivotLeft = { texFlipperLeft.width / 2.0f, texFlipperLeft.height / 2.0f };
+    Rectangle destLeft = { (float)x, (float)y, (float)texFlipperLeft.width, (float)texFlipperLeft.height };
+    DrawTexturePro(texFlipperLeft, { 0,0,(float)texFlipperLeft.width,(float)texFlipperLeft.height }, destLeft, pivotLeft, angleLeft, WHITE);
 
-    // Flipper derecho
+    //  Flipper inferior derecho 
     rightFlipper->GetPhysicPosition(x, y);
     float angleRight = rightFlipper->GetRotation() * RAD2DEG;
-    float wR = (float)rightFlipper->width;
-    float hR = (float)rightFlipper->height;
-    Vector2 pivotRight = { wR / 2, hR / 2 };
-    Rectangle destRight = { (float)x, (float)y, wR, hR };
-    DrawTexturePro(texFlipperRight,
-        { 0, 0, (float)texFlipperRight.width, (float)texFlipperRight.height },
-        destRight, pivotRight, angleRight, WHITE);
+    Vector2 pivotRight = { texFlipperRight.width / 2.0f, texFlipperRight.height / 2.0f };
+    Rectangle destRight = { (float)x, (float)y, (float)texFlipperRight.width, (float)texFlipperRight.height };
+    DrawTexturePro(texFlipperRight, { 0,0,(float)texFlipperRight.width,(float)texFlipperRight.height }, destRight, pivotRight, angleRight, WHITE);
+
+    //  Flipper superior izquierdo 
+    leftFlipper2->GetPhysicPosition(x, y);
+    float angleLeft2 = leftFlipper2->GetRotation() * RAD2DEG;
+    Vector2 pivotLeft2 = { texFlipperLeft.width / 2.0f, texFlipperLeft.height / 2.0f };
+    Rectangle destLeft2 = { (float)x, (float)y, (float)texFlipperLeft.width, (float)texFlipperLeft.height };
+    DrawTexturePro(texFlipperLeft, { 0,0,(float)texFlipperLeft.width,(float)texFlipperLeft.height }, destLeft2, pivotLeft2, angleLeft2, WHITE);
+
+    //  Flipper superior derecho 
+    rightFlipper2->GetPhysicPosition(x, y);
+    float angleRight2 = rightFlipper2->GetRotation() * RAD2DEG;
+    Vector2 pivotRight2 = { texFlipperRight.width / 2.0f, texFlipperRight.height / 2.0f };
+    Rectangle destRight2 = { (float)x, (float)y, (float)texFlipperRight.width, (float)texFlipperRight.height };
+    DrawTexturePro(texFlipperRight, { 0,0,(float)texFlipperRight.width,(float)texFlipperRight.height }, destRight2, pivotRight2, angleRight2, WHITE);
 
     // Spring
     int sx, sy;
@@ -428,7 +488,7 @@ void ModuleGame::DrawGame()
     {
         const int baseX = 20;
         const int padding = 6;                     // separación vertical
-        const int baseY = hsY + hsFont + padding;  // ⟵ vidas debajo del high score
+        const int baseY = hsY + hsFont + padding;  
 
         const float iconH = 26.0f;
         const float scale = iconH / (float)texLife.height;
@@ -530,9 +590,17 @@ void ModuleGame::OnCollision(PhysBody* bodyA, PhysBody* bodyB)
     if (bodyA == ball && (bodyB == collectible1 || bodyB == collectible2 || bodyB == collectible3))
     {
         bodyB->pendingToDelete = true; score += POINTS_COLLECTIBLE; ping();
+        collectible_left--;
+        if (collectible_left == 0) {
+            lives++;
+        }
     }
     else if (bodyB == ball && (bodyA == collectible1 || bodyA == collectible2 || bodyA == collectible3))
     {
         bodyA->pendingToDelete = true; score += POINTS_COLLECTIBLE; ping();
+        collectible_left--;
+        if (collectible_left == 0) {
+            lives++;
+        }
     }
 }
