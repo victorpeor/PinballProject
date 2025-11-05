@@ -32,6 +32,8 @@ bool ModuleGame::Start()
     texFlipperRight = LoadTexture("assets/palanca.png");
     texSpring = LoadTexture("assets/Spring.png");
     textCollectible = LoadTexture("assets/puntos.png");
+    texLife = LoadTexture("assets/Vidas.png");
+
     //Cargar efectos de sonido
     springsound = App->audio->LoadFx("assets/springsound.wav");
     flipersound = App->audio->LoadFx("assets/flipper.wav");
@@ -458,6 +460,33 @@ update_status ModuleGame::PostUpdate()
 
     // --- Mostrar puntuación en pantalla ---
     DrawText(TextFormat("SCORE: %d", score), 20, 20, 30, WHITE);
+
+    // --- Dibujar vidas debajo del score ---
+    if (texLife.id != 0 && lives > 0)
+
+    {
+        // Posición base (debajo del score)
+        const int baseX = 20;
+        const int baseY = 56;   // un poco por debajo del texto del score
+
+        // Tamaño destino (por si el PNG es grande lo escalamos a algo tipo 24–28 px)
+        const float iconH = 26.0f;
+        const float scale = iconH / (float)texLife.height;
+        const float iconW = texLife.width * scale;
+
+        const int spacing = 8;  // separación entre corazones
+
+        for (int i = 0; i < lives; ++i)
+        {
+            Rectangle src = { 0, 0, (float)texLife.width, (float)texLife.height };
+            Rectangle dst = { baseX + i * (iconW + spacing), (float)baseY, iconW, iconH };
+            Vector2 origin = { 0.0f, 0.0f };
+
+            DrawTexturePro(texLife, src, dst, origin, 0.0f, WHITE);
+        }
+    }
+
+
 
     return UPDATE_CONTINUE;
 }

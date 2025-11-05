@@ -42,6 +42,8 @@ private:
     Texture2D texFlipperRight{};
     Texture2D textCollectible{};
 
+    Texture2D texLife{};
+    int lives = 3;
 
     // Efectos de sonido, puntuación, etc.
     unsigned int springsound;
