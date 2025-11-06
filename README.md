@@ -18,15 +18,15 @@ The team is formed by:
 Link of repository: https://github.com/victorpeor/PinballProject
 
 ### Features 
-Right Arrow: Control right flipper.
+- Right Arrow: Control right flipper.
 
-Left Arrow: Control left flipper.
+- Left Arrow: Control left flipper.
 
-Down Arrow: Controlling the spring.
+- Down Arrow: Controlling the spring.
 
-Space: Restart the game when appears the game over screen. 
+- Space: Restart the game when appears the game over screen. 
 
-F1: Show collisions.
+- F1: Show collisions.
 
-F2: Spawn new ball.
+- F2: Spawn new ball.
 
