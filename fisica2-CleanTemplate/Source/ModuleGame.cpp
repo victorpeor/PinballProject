@@ -53,22 +53,22 @@ bool ModuleGame::Start()
     leftFlipper2 = App->physics->CreateFlipper(150, 295, texFlipperLeft.width, texFlipperLeft.height, true);
     rightFlipper2 = App->physics->CreateFlipper(300, 295, texFlipperLeft.width, texFlipperLeft.height, false);
 
-    bumper = App->physics->CreateBumper(235, 64, 20, 1.5f);
+    bumper = App->physics->CreateBumper(233, 86, 15, 1.5f);
     bumper2 = App->physics->CreateBumper(168, 170, 10, 1.5f);
     bumper3 = App->physics->CreateBumper(296, 170, 10, 1.5f);
 
-    spring = App->physics->CreateSpring(465, 360, texSpring.width, texSpring.height);
+    spring = App->physics->CreateSpring(465, 430, texSpring.width, texSpring.height);
     resetZone = App->physics->CreateRectangleSensor(230, 635, 250, 5);
 
     collectible1 = App->physics->CreateCollectible(68, 62, 10);
-    collectible2 = App->physics->CreateCollectible(398, 111, 8);
-    collectible3 = App->physics->CreateCollectible(224, 287, 12);
+    collectible2 = App->physics->CreateCollectible(398, 111, 10);
+    collectible3 = App->physics->CreateCollectible(224, 287, 10);
 
     // Bordes y bumpers triangulares
-    const int trianglePoints1[] = { 322, 489, 320, 521, 290, 537 };
+    const int trianglePoints1[] = { 322, 494, 320, 526, 290, 542 };
     App->physics->CreateTriangularBumper(0, 0, trianglePoints1, 6, 1.5f);
 
-    const int trianglePoints2[] = { 127, 489, 127, 521, 157, 537 };
+    const int trianglePoints2[] = { 127, 494, 127, 526, 157, 542 };
     App->physics->CreateTriangularBumper(0, 0, trianglePoints2, 6, 1.5f);
 
     const int bordeExterior[] = {
@@ -77,7 +77,7 @@ bool ModuleGame::Start()
         32, 601, 93, 650, 354, 650, 415, 600, 415, 469, 400, 454,
         400, 428, 420, 399, 428, 368, 429, 88, 417, 71, 407, 69,
         361, 94, 355, 87, 394, 52, 419, 54, 434, 65, 448, 90,
-        448, 477, 479, 477, 479, 71, 466, 37, 446, 13,
+        448, 600, 479, 600, 479, 71, 466, 37, 446, 13,
     };
 
     const int bordeInterior1[] = {
@@ -407,11 +407,33 @@ void ModuleGame::DrawGame()
     DrawTexture(texMap, 0, 0, WHITE);
 
     // Bola
-    if (ball)
+    if (ball != nullptr && ball->body != nullptr)
     {
-        int bx, by;
-        ball->GetPhysicPosition(bx, by);
-        DrawTexture(texBall, bx - texBall.width / 2, by - texBall.height / 2, WHITE);
+        b2Vec2 pos = ball->body->GetPosition();
+        float angle = ball->body->GetAngle() * RAD2DEG;
+
+        int x = METERS_TO_PIXELS(pos.x);
+        int y = METERS_TO_PIXELS(pos.y);
+
+        Rectangle src = { 0, 0, (float)texBall.width, (float)texBall.height };
+
+        
+        float scale = 0.8f;  
+
+        Rectangle dst = {
+            (float)x,
+            (float)y,
+            (float)texBall.width * scale,
+            (float)texBall.height * scale
+        };
+
+        
+        Vector2 pivot = {
+            (float)(texBall.width * scale) / 2.0f,
+            (float)(texBall.height * scale) / 2.0f
+        };
+
+        DrawTexturePro(texBall, src, dst, pivot, angle, WHITE);
     }
 
     //  Flipper inferior izquierdo 
@@ -516,6 +538,15 @@ void ModuleGame::DrawGameOver()
 
 update_status ModuleGame::PostUpdate()
 {
+    if (debug)
+    {
+        App->physics->debugEnabled = true;
+        App->physics->DrawDebug(App->renderer);
+    }
+    else
+    {
+        App->physics->debugEnabled = false;
+    }
     // Dibujo por estado
     switch (currentState)
     {
@@ -589,18 +620,26 @@ void ModuleGame::OnCollision(PhysBody* bodyA, PhysBody* bodyB)
 
     if (bodyA == ball && (bodyB == collectible1 || bodyB == collectible2 || bodyB == collectible3))
     {
-        bodyB->pendingToDelete = true; score += POINTS_COLLECTIBLE; ping();
-        collectible_left--;
-        if (collectible_left == 0) {
-            lives++;
+        if (bodyB->pendingToDelete == false) {
+            bodyB->pendingToDelete = true; score += POINTS_COLLECTIBLE; ping();
+            collectible_left--;
+            if (collectible_left == 0) {
+                lives++;
+            }
         }
     }
     else if (bodyB == ball && (bodyA == collectible1 || bodyA == collectible2 || bodyA == collectible3))
     {
-        bodyA->pendingToDelete = true; score += POINTS_COLLECTIBLE; ping();
-        collectible_left--;
-        if (collectible_left == 0) {
-            lives++;
+        if (bodyA->pendingToDelete == false) {
+            bodyA->pendingToDelete = true; score += POINTS_COLLECTIBLE; ping();
+            collectible_left--;
+            if (collectible_left == 0) {
+                lives++;
+            }
         }
+    }
+    if ((bodyA == ball && (bodyB == Tbumper || bodyB == Tbumper2)) || (bodyB == ball && (bodyB == Tbumper || bodyB == Tbumper2)))
+    {
+        App->audio->PlayFx(flipersound);
     }
 }

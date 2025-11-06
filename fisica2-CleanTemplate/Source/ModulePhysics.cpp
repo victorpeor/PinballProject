@@ -188,141 +188,62 @@ PhysBody* ModulePhysics::CreateChain(int x, int y, const int* points, int size)
 // 
 update_status ModulePhysics::PostUpdate()
 {
-	
-	b2Body* mouseSelect = nullptr;
-	Vector2 mousePosition = GetMousePosition();
-	b2Vec2 pMousePosition = b2Vec2(PIXEL_TO_METERS(mousePosition.x), PIXEL_TO_METERS(mousePosition.y));
-
-	// Bonus code: this will iterate all objects in the world and draw the circles
-	// You need to provide your own macro to translate meters to pixels
-	for (b2Body* b = world->GetBodyList(); b; b = b->GetNext())
+	if (!debugEnabled && mouse_joint != nullptr)
 	{
-
-		b2Body* nextBody = b->GetNext(); // Guardamos el siguiente por si eliminamos este
-
-		PhysBody* pbody = (PhysBody*)b->GetUserData().pointer;
-
-		// --- 🔥 Destruir cuerpos pendientes ---
-		if (pbody != nullptr && pbody->pendingToDelete)
-		{
-			world->DestroyBody(b);
-			delete pbody;
-			b = nextBody;
-			continue; // saltamos al siguiente cuerpo
-		}
-
-		for (b2Fixture* f = b->GetFixtureList(); f; f = f->GetNext())
-		{
-			switch (f->GetType())
-			{
-				// Draw circles ------------------------------------------------
-			case b2Shape::e_circle:
-			{
-				b2CircleShape* shape = (b2CircleShape*)f->GetShape();
-				b2Vec2 pos = f->GetBody()->GetPosition();
-
-				DrawCircle(METERS_TO_PIXELS(pos.x), METERS_TO_PIXELS(pos.y), (float)METERS_TO_PIXELS(shape->m_radius), Color{ 0, 0, 0, 128 });
-			}
-			break;
-
-			// Draw polygons ------------------------------------------------
-			case b2Shape::e_polygon:
-			{
-				b2PolygonShape* polygonShape = (b2PolygonShape*)f->GetShape();
-				int32 count = polygonShape->m_count;
-				b2Vec2 prev, v;
-
-				for (int32 i = 0; i < count; ++i)
-				{
-					v = b->GetWorldPoint(polygonShape->m_vertices[i]);
-					if (i > 0)
-						DrawLine(METERS_TO_PIXELS(prev.x), METERS_TO_PIXELS(prev.y), METERS_TO_PIXELS(v.x), METERS_TO_PIXELS(v.y), RED);
-
-					prev = v;
-				}
-
-				v = b->GetWorldPoint(polygonShape->m_vertices[0]);
-				DrawLine(METERS_TO_PIXELS(prev.x), METERS_TO_PIXELS(prev.y), METERS_TO_PIXELS(v.x), METERS_TO_PIXELS(v.y), RED);
-			}
-			break;
-
-			// Draw chains contour -------------------------------------------
-			case b2Shape::e_chain:
-			{
-				b2ChainShape* shape = (b2ChainShape*)f->GetShape();
-				b2Vec2 prev, v;
-
-				for (int32 i = 0; i < shape->m_count; ++i)
-				{
-					v = b->GetWorldPoint(shape->m_vertices[i]);
-					if (i > 0)
-						DrawLine(METERS_TO_PIXELS(prev.x), METERS_TO_PIXELS(prev.y), METERS_TO_PIXELS(v.x), METERS_TO_PIXELS(v.y), GREEN);
-					prev = v;
-				}
-
-				v = b->GetWorldPoint(shape->m_vertices[0]);
-				DrawLine(METERS_TO_PIXELS(prev.x), METERS_TO_PIXELS(prev.y), METERS_TO_PIXELS(v.x), METERS_TO_PIXELS(v.y), GREEN);
-			}
-			break;
-
-			// Draw a single segment(edge) ----------------------------------
-			case b2Shape::e_edge:
-			{
-				b2EdgeShape* shape = (b2EdgeShape*)f->GetShape();
-				b2Vec2 v1, v2;
-
-				v1 = b->GetWorldPoint(shape->m_vertex0);
-				v1 = b->GetWorldPoint(shape->m_vertex1);
-				DrawLine(METERS_TO_PIXELS(v1.x), METERS_TO_PIXELS(v1.y), METERS_TO_PIXELS(v2.x), METERS_TO_PIXELS(v2.y), BLUE);
-			}
-			break;
-			}
-
-			// TODO 1: If mouse button 1 is pressed ...
-			// test if the current body contains mouse position
-			if (mouse_joint == nullptr && mouseSelect == nullptr && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-				//printf("Mouse click: world coords = (%f, %f)\n", mousePosition.x, mousePosition.y);
-				if (f->TestPoint(pMousePosition)) {
-					mouseSelect = b;
-				}
-			}
-		}
-	}
-
-	// If a body was selected we will attach a mouse joint to it
-	// so we can pull it around
-	// TODO 2: If a body was selected, create a mouse joint
-	// using mouse_joint class property
-	if (mouseSelect) {
-		b2MouseJointDef def;
-
-		def.bodyA = ground;
-		def.bodyB = mouseSelect;
-		def.target = pMousePosition;
-		def.damping = 0.5f;
-		def.stiffness = 20.f;
-		def.maxForce = 100.f * mouseSelect->GetMass();
-
-		mouse_joint = (b2MouseJoint*)world->CreateJoint(&def);
-
-		
-	}
-
-	// TODO 3: If the player keeps pressing the mouse button, update
-	// target position and draw a red line between both anchor points
-	else if (mouse_joint && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-		mouse_joint->SetTarget(pMousePosition);
-		b2Vec2 anchorPosition = mouse_joint->GetBodyB()->GetPosition();
-		anchorPosition.x = METERS_TO_PIXELS(anchorPosition.x);
-		anchorPosition.y = METERS_TO_PIXELS(anchorPosition.y);
-
-		DrawLine(anchorPosition.x, anchorPosition.y, mousePosition.x, mousePosition.y, RED);
-	}
-
-	// TODO 4: If the player releases the mouse button, destroy the joint
-	else if (mouse_joint && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
 		world->DestroyJoint(mouse_joint);
 		mouse_joint = nullptr;
+	}
+
+	if (debugEnabled)
+	{
+		b2Body* mouseSelect = nullptr;
+		Vector2 mousePosition = GetMousePosition();
+		b2Vec2 pMousePosition = b2Vec2(PIXEL_TO_METERS(mousePosition.x), PIXEL_TO_METERS(mousePosition.y));
+
+		for (b2Body* b = world->GetBodyList(); b; b = b->GetNext())
+		{
+			b2Body* nextBody = b->GetNext();
+
+			PhysBody* pbody = (PhysBody*)b->GetUserData().pointer;
+
+			if (pbody != nullptr && pbody->pendingToDelete)
+			{
+				world->DestroyBody(b);
+				delete pbody;
+				b = nextBody;
+				continue;
+			}
+
+			for (b2Fixture* f = b->GetFixtureList(); f; f = f->GetNext())
+			{
+				if (mouse_joint == nullptr && mouseSelect == nullptr && IsMouseButtonDown(MOUSE_BUTTON_LEFT))
+				{
+					if (f->TestPoint(pMousePosition))
+						mouseSelect = b;
+				}
+			}
+		}
+
+		if (mouseSelect)
+		{
+			b2MouseJointDef def;
+			def.bodyA = ground;
+			def.bodyB = mouseSelect;
+			def.target = pMousePosition;
+			def.damping = 0.5f;
+			def.stiffness = 20.f;
+			def.maxForce = 100.f * mouseSelect->GetMass();
+			mouse_joint = (b2MouseJoint*)world->CreateJoint(&def);
+		}
+		else if (mouse_joint && IsMouseButtonDown(MOUSE_BUTTON_LEFT))
+		{
+			mouse_joint->SetTarget(pMousePosition);
+		}
+		else if (mouse_joint && IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+		{
+			world->DestroyJoint(mouse_joint);
+			mouse_joint = nullptr;
+		}
 	}
 
 	return UPDATE_CONTINUE;
@@ -533,7 +454,7 @@ PhysBody* ModulePhysics::CreateSpring(int x, int y, int width, int height)
 	jointDef.localAxisA.Set(0, 1);          // eje vertical
 	jointDef.enableLimit = true;
 	jointDef.lowerTranslation = 0.0f;      // posición mínima
-	jointDef.upperTranslation = PIXEL_TO_METERS(50); // máximo hacia abajo
+	jointDef.upperTranslation = PIXEL_TO_METERS(100); // máximo hacia abajo
 	jointDef.enableMotor = true;
 	jointDef.motorSpeed = 0.0f;            // se controla en Update()
 	jointDef.maxMotorForce = 2000.0f;
@@ -634,8 +555,36 @@ void ModulePhysics::DrawDebug(ModuleRender* render)
 				}
 				break;
 			}
+			case b2Shape::e_edge:
+			{
+				b2EdgeShape* edge = (b2EdgeShape*)f->GetShape();
+				b2Vec2 v1 = b->GetWorldPoint(edge->m_vertex1);
+				b2Vec2 v2 = b->GetWorldPoint(edge->m_vertex2);
+
+				render->DrawLine(
+					METERS_TO_PIXELS(v1.x),
+					METERS_TO_PIXELS(v1.y),
+					METERS_TO_PIXELS(v2.x),
+					METERS_TO_PIXELS(v2.y),
+					color
+				);
+				break;
+			}
 			}
 		}
+	}
+	if (debugEnabled && mouse_joint != nullptr)
+	{
+		b2Vec2 anchor = mouse_joint->GetBodyB()->GetPosition();
+		b2Vec2 target = mouse_joint->GetTarget();
+
+		render->DrawLine(
+			METERS_TO_PIXELS(anchor.x),
+			METERS_TO_PIXELS(anchor.y),
+			METERS_TO_PIXELS(target.x),
+			METERS_TO_PIXELS(target.y),
+			RED
+		);
 	}
 
 }
