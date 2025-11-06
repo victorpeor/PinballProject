@@ -215,6 +215,10 @@ void ModuleGame::EnterState(GameState s)
         break;
 
     case GameState::GAMEOVER:
+        // Guardar récord y score anterior
+        previousScore = score;
+        if (score > highScore) highScore = score;
+
         // Entrar a game over: destruir bola y dejar pantalla de derrota
         if (ball) { App->physics->DestroyBody(ball); ball = nullptr; }
         break;
@@ -500,7 +504,7 @@ void ModuleGame::DrawGame()
     if (debug) App->physics->DrawDebug(App->renderer);
 
     // Score y vidas
-    DrawText(TextFormat("SCORE: %d", score), 20, 20, 30, WHITE);
+    DrawText(TextFormat("SCORE: %d Prev: %d", score, previousScore), 20, 20, 30, WHITE);
 
     const int hsY = 50;
     const int hsFont = 25;

@@ -65,6 +65,7 @@ private:
     int lives = 3;
     bool loseLifePending = false;
     int highScore = 0;
+    int previousScore = 0;
 
     // --- Audio ---
     unsigned int springsound = 0;
