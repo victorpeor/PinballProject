@@ -160,7 +160,7 @@ void ModuleGame::ApplyStateChangeAtBlack()
 
 void ModuleGame::EnterState(GameState s)
 {
-
+    App->physics->DestroyMouseJoint();
     switch (s)
     {
     case GameState::MENU:

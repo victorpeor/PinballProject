@@ -36,6 +36,11 @@ bool ModulePhysics::Start()
 
 update_status ModulePhysics::PreUpdate()
 {
+
+	if (mouse_joint != nullptr && (world == nullptr || mouse_joint->GetBodyB() == nullptr))
+	{
+		mouse_joint = nullptr;
+	}
 	// --- Fixed timestep setup ---
 	static float accumulator = 0.0f;
 	const float fixedTimeStep = 1.0f / 60.0f; // 60Hz físicas estables
@@ -255,8 +260,11 @@ bool ModulePhysics::CleanUp()
 {
 	LOG("Destroying physics world");
 
+	DestroyMouseJoint();
 	// Delete the whole physics world!
+
 	delete world;
+	world = nullptr;
 
 	return true;
 }
@@ -685,4 +693,12 @@ PhysBody* ModulePhysics::CreateCollectible(int x, int y, float radius)
 	collectible->height = radius * 2;
 
 	return collectible;
+}
+void ModulePhysics::DestroyMouseJoint()
+{
+	if (mouse_joint != nullptr && world != nullptr)
+	{
+		world->DestroyJoint(mouse_joint);
+		mouse_joint = nullptr;
+	}
 }

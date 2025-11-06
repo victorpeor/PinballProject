@@ -66,7 +66,7 @@ public:
 	void BeginContact(b2Contact* contact);
 	void DestroyBody(PhysBody* body);
 	void MoveFlipper(PhysBody* flipper, float speed);
-	
+	void DestroyMouseJoint();
 private:
 
 	
